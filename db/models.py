@@ -1,5 +1,5 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
+from datetime import date, datetime
+from sqlalchemy import Column, Date, Integer, String, DateTime, ForeignKey, Enum
 from typing import Optional
 from sqlalchemy.orm import relationship, DeclarativeBase, mapped_column, Mapped
 import sqlalchemy as sa
@@ -20,9 +20,9 @@ class User(Base):
     password : Mapped[str] = mapped_column(String,)
     phone_number : Mapped[str] = mapped_column(String, unique=True, nullable=True)
     sex : Mapped[Gender] = mapped_column(Enum(Gender), nullable=True)
-    birth_date : Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    birth_date : Mapped[date] = mapped_column(Date, nullable=True)
     role : Mapped[Role] = mapped_column(Enum(Role), default=Role.STUDENT)
-    avatar: Mapped[str] = mapped_column(String, nullable=True)
+    avatar_url: Mapped[str] = mapped_column(String, nullable=True)
     created_at : Mapped[datetime] = mapped_column(DateTime, default=get_current_time)
 
     group_student = relationship("GroupStudent", back_populates="student", cascade="all, delete-orphan")
