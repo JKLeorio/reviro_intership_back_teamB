@@ -64,7 +64,7 @@ def run_migrations_online() -> None:
 
     url_tokens = {
         "DB_USER": decouple.config('POSTGRES_USER'),
-        "DB_PASS": decouple.config('POSTGRES_DB'),
+        "DB_PASSWORD": decouple.config('POSTGRES_DB'),
         "DB_HOST": decouple.config('POSTGRES_HOST'),
         "DB_NAME": decouple.config('POSTGRES_NAME'),
         "DB_PORT": decouple.config('POSTGRES_PORT'),
