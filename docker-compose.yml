@@ -5,10 +5,8 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_DB=reviro_intership
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+    env_file:
+      - /.env
     networks:
       - network_buff
     healthcheck:
@@ -25,17 +23,12 @@ services:
     environment:
       PYTHONUNBUFFERED: '1'
       PYTHONDONTWRITEBYTECODE: '1'
-      DB_NAME: 'qamx'
-      DB_USER: 'postgres'
-      DB_PASS: 'postgres'
-      DB_PORT: '5432'
-      DB_HOST: 'db'
     networks:
       - network_buff
     links:
       - db:db
     env_file:
-      - ./.env
+      - /.env
     restart: unless-stopped
     depends_on:
       db:
