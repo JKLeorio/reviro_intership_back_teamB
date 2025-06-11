@@ -6,7 +6,7 @@ services:
     ports:
       - "5432:5432"
     env_file:
-      - /.env
+      - .env
     networks:
       - network_buff
     healthcheck:
@@ -28,7 +28,7 @@ services:
     links:
       - db:db
     env_file:
-      - /.env
+      - .env
     restart: unless-stopped
     depends_on:
       db:
