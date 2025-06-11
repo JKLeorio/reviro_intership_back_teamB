@@ -7,11 +7,11 @@ from .models import User, Base
 from decouple import config
 
 DB_ENGINE = config('DB_ENGINE', default='postgresql+asyncpg')
-DB_USER = config('DB_USER')
-DB_PASSWORD = config('DB_PASSWORD')
-DB_HOST = config('DB_HOST')
-DB_PORT = config('DB_PORT', default='5432')
-DB_NAME = config('DB_NAME')
+DB_USER = config('POSTGRES_USER')
+DB_PASSWORD = config('POSTGRES_PASSWORD')
+DB_HOST = config('POSTGRES_HOST')
+DB_PORT = config('POSTGRES_PORT', default='5432')
+DB_NAME = config('POSTGRES_DB')
 DATABASE_URL = f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 
