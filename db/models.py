@@ -2,6 +2,7 @@ from datetime import date, datetime
 from sqlalchemy import Column, Date, Integer, String, DateTime, ForeignKey, Enum
 from typing import Optional
 from sqlalchemy.orm import relationship, DeclarativeBase, mapped_column, Mapped
+from sqlalchemy.ext.asyncio import AsyncAttrs
 import sqlalchemy as sa
 from .types import Gender, Role, Level
 from utils.date_time_utils import get_current_time
@@ -10,7 +11,7 @@ class Base(DeclarativeBase):
     pass
 
 
-class User(Base):
+class User(Base, AsyncAttrs):
     __tablename__ = 'users'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -30,7 +31,7 @@ class User(Base):
     payments = relationship("Payment", back_populates="user", cascade="all, delete-orphan")
 
 
-class Group(Base):
+class Group(Base, AsyncAttrs):
     __tablename__ = 'groups'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -43,7 +44,7 @@ class Group(Base):
 
 
 
-class GroupStudent(Base):
+class GroupStudent(Base, AsyncAttrs):
     __tablename__ = 'group_students'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -54,13 +55,13 @@ class GroupStudent(Base):
     student : Mapped["User"] = relationship("User", back_populates="group_student")
 
 
-class PaymentMethod(Base):
+class PaymentMethod(Base, AsyncAttrs):
     __tablename__ = 'payment_methods'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name : Mapped[str] = mapped_column(String, nullable=False)
 
-class Payment(Base):
+class Payment(Base, AsyncAttrs):
     __tablename__ = 'payments'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -74,7 +75,7 @@ class Payment(Base):
 
 
 
-class Course(Base):
+class Course(Base, AsyncAttrs):
     __tablename__ = 'courses'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -86,7 +87,7 @@ class Course(Base):
     groups : Mapped[list["Group"]] = relationship("Group", back_populates="course", cascade="all, delete-orphan")
 
 
-class Subject(Base):
+class Subject(Base, AsyncAttrs):
     __tablename__ = 'subjects'
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name : Mapped[str] = mapped_column(String, nullable=False)
@@ -96,7 +97,7 @@ class Subject(Base):
     lessons : Mapped[list["Lesson"]] = relationship("Lesson", back_populates="subject", cascade="all, delete-orphan")
 
 
-class Classroom(Base):
+class Classroom(Base, AsyncAttrs):
     __tablename__ = 'classrooms'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -105,7 +106,7 @@ class Classroom(Base):
     lessons : Mapped[list["Lesson"]] = relationship("Lesson", back_populates="classroom", cascade="all, delete-orphan")
 
 
-class Schedule(Base):
+class Schedule(Base, AsyncAttrs):
     __tablename__ = 'schedules'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -116,7 +117,7 @@ class Schedule(Base):
     group : Mapped["Group"] = relationship("Group", back_populates="schedules")
     lesson_schedule : Mapped[list["LessonSchedule"]] = relationship("LessonSchedule", back_populates="schedule", cascade="all, delete-orphan")
 
-class Lesson(Base):
+class Lesson(Base, AsyncAttrs):
     __tablename__ = 'lessons'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -134,7 +135,7 @@ class Lesson(Base):
 
 
 
-class LessonSchedule(Base):
+class LessonSchedule(Base, AsyncAttrs):
     __tablename__ = 'lesson_schedules'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -145,7 +146,7 @@ class LessonSchedule(Base):
     lesson : Mapped["Lesson"] = relationship("Lesson", back_populates="lesson_schedule")
     schedule : Mapped["Schedule"] = relationship("Schedule", back_populates="lesson_schedule")
 
-class Homework(Base):
+class Homework(Base, AsyncAttrs):
     __tablename__ = 'homeworks'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
