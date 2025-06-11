@@ -6,32 +6,32 @@ from sqlalchemy.ext.asyncio import AsyncAttrs
 import sqlalchemy as sa
 from .types import Gender, Role, Level
 from utils.date_time_utils import get_current_time
+from fastapi_users.db import SQLAlchemyBaseUserTable
 
-class Base(DeclarativeBase):
+
+class Base(DeclarativeBase, AsyncAttrs):
     pass
 
 
-class User(Base, AsyncAttrs):
+class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = 'users'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     first_name : Mapped[str] = mapped_column(String, nullable=False)
     last_name : Mapped[str] = mapped_column(String, nullable=False)
-    email : Mapped[str] = mapped_column(String, unique=True, index=True,)
-    password : Mapped[str] = mapped_column(String,)
     phone_number : Mapped[str] = mapped_column(String, unique=True, nullable=True)
     sex : Mapped[Gender] = mapped_column(Enum(Gender), nullable=True)
     birth_date : Mapped[date] = mapped_column(Date, nullable=True)
     role : Mapped[Role] = mapped_column(Enum(Role), default=Role.STUDENT)
     avatar_url: Mapped[str] = mapped_column(String, nullable=True)
-    created_at : Mapped[datetime] = mapped_column(DateTime, default=get_current_time)
+    created_at : Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
     group_student = relationship("GroupStudent", back_populates="student", cascade="all, delete-orphan")
     subjects = relationship("Subject", back_populates="teacher")
     payments = relationship("Payment", back_populates="user", cascade="all, delete-orphan")
 
 
-class Group(Base, AsyncAttrs):
+class Group(Base):
     __tablename__ = 'groups'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -40,11 +40,13 @@ class Group(Base, AsyncAttrs):
     course_id : Mapped[int] = mapped_column(Integer, ForeignKey('courses.id'), nullable=False)
 
     course : Mapped["Course"] = relationship("Course", back_populates="groups")
+
     group_student : Mapped[list["GroupStudent"]] = relationship("GroupStudent", back_populates="group", cascade="all, delete-orphan")
+    schedules : Mapped[list["Schedule"]] = relationship("Schedule", back_populates="group", cascade="all, delete-orphan")
 
 
 
-class GroupStudent(Base, AsyncAttrs):
+class GroupStudent(Base):
     __tablename__ = 'group_students'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -55,13 +57,13 @@ class GroupStudent(Base, AsyncAttrs):
     student : Mapped["User"] = relationship("User", back_populates="group_student")
 
 
-class PaymentMethod(Base, AsyncAttrs):
+class PaymentMethod(Base):
     __tablename__ = 'payment_methods'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name : Mapped[str] = mapped_column(String, nullable=False)
 
-class Payment(Base, AsyncAttrs):
+class Payment(Base):
     __tablename__ = 'payments'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -75,7 +77,7 @@ class Payment(Base, AsyncAttrs):
 
 
 
-class Course(Base, AsyncAttrs):
+class Course(Base):
     __tablename__ = 'courses'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -87,7 +89,7 @@ class Course(Base, AsyncAttrs):
     groups : Mapped[list["Group"]] = relationship("Group", back_populates="course", cascade="all, delete-orphan")
 
 
-class Subject(Base, AsyncAttrs):
+class Subject(Base):
     __tablename__ = 'subjects'
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name : Mapped[str] = mapped_column(String, nullable=False)
@@ -97,7 +99,7 @@ class Subject(Base, AsyncAttrs):
     lessons : Mapped[list["Lesson"]] = relationship("Lesson", back_populates="subject", cascade="all, delete-orphan")
 
 
-class Classroom(Base, AsyncAttrs):
+class Classroom(Base):
     __tablename__ = 'classrooms'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -106,7 +108,7 @@ class Classroom(Base, AsyncAttrs):
     lessons : Mapped[list["Lesson"]] = relationship("Lesson", back_populates="classroom", cascade="all, delete-orphan")
 
 
-class Schedule(Base, AsyncAttrs):
+class Schedule(Base):
     __tablename__ = 'schedules'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -117,7 +119,20 @@ class Schedule(Base, AsyncAttrs):
     group : Mapped["Group"] = relationship("Group", back_populates="schedules")
     lesson_schedule : Mapped[list["LessonSchedule"]] = relationship("LessonSchedule", back_populates="schedule", cascade="all, delete-orphan")
 
-class Lesson(Base, AsyncAttrs):
+
+class LessonSchedule(Base):
+    __tablename__ = 'lesson_schedules'
+    
+    id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    lesson_id : Mapped[int] = mapped_column(Integer, ForeignKey('lessons.id'), nullable=False)
+    schedule_id : Mapped[int] = mapped_column(Integer, ForeignKey('schedules.id'), nullable=False)
+    created_at : Mapped[datetime] = mapped_column(DateTime, default=get_current_time)
+    
+    lessons : Mapped["Lesson"] = relationship("Lesson", back_populates="lesson_schedule")
+    schedule : Mapped["Schedule"] = relationship("Schedule", back_populates="lesson_schedule")
+
+
+class Lesson(Base):
     __tablename__ = 'lessons'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -135,18 +150,7 @@ class Lesson(Base, AsyncAttrs):
 
 
 
-class LessonSchedule(Base, AsyncAttrs):
-    __tablename__ = 'lesson_schedules'
-    
-    id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    lesson_id : Mapped[int] = mapped_column(Integer, ForeignKey('lessons.id'), nullable=False)
-    schedule_id : Mapped[int] = mapped_column(Integer, ForeignKey('schedules.id'), nullable=False)
-    created_at : Mapped[datetime] = mapped_column(DateTime, default=get_current_time)
-    
-    lesson : Mapped["Lesson"] = relationship("Lesson", back_populates="lesson_schedule")
-    schedule : Mapped["Schedule"] = relationship("Schedule", back_populates="lesson_schedule")
-
-class Homework(Base, AsyncAttrs):
+class Homework(Base):
     __tablename__ = 'homeworks'
     
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
