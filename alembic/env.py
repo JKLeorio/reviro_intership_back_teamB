@@ -66,7 +66,7 @@ def run_migrations_online() -> None:
         "DB_USER": decouple.config('POSTGRES_USER'),
         "DB_PASSWORD": decouple.config('POSTGRES_PASSWORD'),
         "DB_HOST": decouple.config('POSTGRES_HOST'),
-        "DB_NAME": decouple.config('POSTGRES_NAME'),
+        "DB_NAME": decouple.config('POSTGRES_DB'),
         "DB_PORT": decouple.config('POSTGRES_PORT'),
     }
 
