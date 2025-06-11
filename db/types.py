@@ -10,6 +10,7 @@ class Gender(str, Enum):
     MALE = "male"
     FEMALE = "female"
 
+
 class Level(str, Enum):
     A1 = "A1"
     A2 = "A2"

@@ -15,18 +15,18 @@ DB_NAME = config('DB_NAME')
 DATABASE_URL = f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 
-
 engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine)
-
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
         yield session
 
+
 async def get_user_db(session: AsyncSession = Depends(get_async_session)):
     yield SQLAlchemyUserDatabase(session, User)
+
 
 async def create_test_db_and_tables():
     async with engine.begin() as conn:
