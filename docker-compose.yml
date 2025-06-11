@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=reviro_intership
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      - network_buff
+    healthcheck:
+      test: pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
+      interval: 2s
+      retries: 10
+  web:
+    build:
+      context: .
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DB_NAME: 'qamx'
+      DB_USER: 'postgres'
+      DB_PASS: 'postgres'
+      DB_PORT: '5432'
+      DB_HOST: 'db'
+    networks:
+      - network_buff
+    links:
+      - db:db
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+
+networks:
+  network_buff:
+    driver: bridge
