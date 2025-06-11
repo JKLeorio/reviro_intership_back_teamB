@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy.orm import relationship, DeclarativeBase, mapped_column, Mapped
 from sqlalchemy.ext.asyncio import AsyncAttrs
 import sqlalchemy as sa
-from .types import Gender, Role, Level
+from .types import Gender, Role, Level, PaymentMethod
 from utils.date_time_utils import get_current_time
 from fastapi_users.db import SQLAlchemyBaseUserTable
 
@@ -72,13 +72,6 @@ class GroupStudent(Base):
         "User", back_populates="group_student")
 
 
-class PaymentMethod(Base):
-    __tablename__ = 'payment_methods'
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-
-
 class Payment(Base):
     __tablename__ = 'payments'
 
@@ -86,13 +79,11 @@ class Payment(Base):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('users.id'), nullable=False)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
-    payment_method_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('payment_methods.id'), nullable=False)
+    payment_method: Mapped[PaymentMethod] = mapped_column(Enum(PaymentMethod), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=get_current_time)
 
     user: Mapped["User"] = relationship("User", back_populates="payments")
-    payment_method: Mapped["PaymentMethod"] = relationship("PaymentMethod")
 
 
 class Course(Base):
