@@ -3,6 +3,8 @@
 build/
 wheels/
 
+alembic.ini
+alembic/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
