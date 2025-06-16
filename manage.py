@@ -15,7 +15,7 @@ async def createsuperuser(email: str, password: str):
     async with get_async_session_context() as session:
         async with get_user_db_context(session=session) as user_db:
             if await session.scalar(select(User).where(User.email == email)):
-                print(f'User with this email is already registered')
+                print(f'User with {email} email is already registered')
                 exit()
             async with get_user_manager_context(user_db=user_db) as user_manager:
                 user = await user_manager.create(
