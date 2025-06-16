@@ -40,3 +40,9 @@ class UserUpdate(BaseModel):
     sex: Optional[Gender] = None
     birth_date: Optional[datetime] = Field(
         None, description="User's birth date, iso 8601 format")
+
+class SuperAdminCreate(schemas.BaseUserCreate):
+    is_superuser: bool = True
+    is_active: bool = True
+    is_verified: bool = True
+    role: Role = Role.ADMIN
