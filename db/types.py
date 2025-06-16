@@ -4,6 +4,7 @@ from enum import Enum
 class Role(str, Enum):
     TEACHER = "teacher"
     STUDENT = "student"
+    ADMIN = "admin"
 
 
 class Gender(str, Enum):
