@@ -46,3 +46,7 @@ class SuperAdminCreate(schemas.BaseUserCreate):
     is_active: bool = True
     is_verified: bool = True
     role: Role = Role.ADMIN
+
+
+class SuperAdminUpdate(schemas.BaseUserUpdate):
+    pass

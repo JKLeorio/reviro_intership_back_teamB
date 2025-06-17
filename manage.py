@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from db.database import get_async_session_context, get_user_db_context
 from db.models import User
-from db.schemas import SuperAdminCreate
+from db.schemas import SuperAdminCreate, SuperAdminUpdate
 from api.auth import get_user_manager_context
 
 
@@ -36,6 +36,19 @@ async def delete_superuser(email : str):
                 user = await user_manager.get_by_email(user_email=email)
                 await user_manager.delete(user=user)
                 print(f"superuser succesfull deleted")
+
+
+async def update_superuser_password(email : str, password : str):
+    user_update = SuperAdminUpdate(email=email, password=password)
+    async with get_async_session_context() as session:
+        async with get_user_db_context(session=session) as user_db:
+            if await session.scalar(select(User).where(User.email == email)):
+                print(f'User with {email} email is already registered')
+                exit()
+            async with get_user_manager_context(user_db=user_db) as user_manager:
+                user = await user_manager.get_by_email(user_email=email)
+                await user_manager.update(user_update=user_update, user=user)
+                print(f"Суперпользователь создан: {user.email}")
 
 
 def main():
