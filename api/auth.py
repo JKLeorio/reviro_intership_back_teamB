@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi_users import FastAPIUsers, fastapi_users
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.models import User
+from models.user import User
 from db.database import get_user_db, get_async_session
 from db.schemas import UserCreate, UserRegister, UserResponse
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
@@ -37,15 +37,13 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         self, user: User, token: str, request: Optional[Request] = None
     ):
         print(
-            f"User {
-                user.id} has forgot their password. Reset token: {token}")
+            f"User {user.id} has forgot their password. Reset token: {token}")
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Optional[Request] = None
     ):
         print(
-            f"Verification requested for user {
-                user.id}. Verification token: {token}")
+            f"Verification requested for user {user.id}. Verification token: {token}")
 
 
 async def get_user_manager(user_db=Depends(get_user_db)):
