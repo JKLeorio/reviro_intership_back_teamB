@@ -1,9 +1,12 @@
 from datetime import datetime
-from typing import List, Annotated
+from typing import List, Annotated, TYPE_CHECKING
 from utils.date_time_utils import get_current_time
 from sqlalchemy import String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.dbbase import Base
+
+if TYPE_CHECKING:
+    from models.group import Group
 
 
 idpk = Annotated[int, mapped_column(primary_key=True, autoincrement=True)]
@@ -43,3 +46,5 @@ class Course(Base):
 
     language: Mapped["Language"] = relationship(back_populates='courses')
     level: Mapped["Level"] = relationship(back_populates='courses')
+
+    groups: Mapped[List["Group"]] = relationship(back_populates="course", cascade='all, delete-orphan')
