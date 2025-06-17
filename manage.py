@@ -57,9 +57,15 @@ def main():
 
     #createsuperuser
     csu = subparsers.add_parser("createsuperuser")
-
     csu.add_argument("--email", required=True)
     csu.add_argument("--password", required=True)
+
+    dsu = subparsers.add_parser("deletesuperuser")
+    dsu.add_argument("--user_email", required=True)
+
+    usu = subparsers.add_parser("updatesuperuser")
+    usu.add_argument("--user_email", required=True)
+    usu.add_argument("--new_password", required=True)
 
     args = parser.parse_args()
 
@@ -69,6 +75,10 @@ def main():
 
     if args.command == "createsuperuser":
         asyncio.run(create_superuser(args.email, args.password))
+    elif args.command == "updatesuperuser":
+        asyncio.run(delete_superuser(args.user_email))
+    elif args.command == "deletesuperuser":
+        asyncio.run(update_superuser_password(args.user_email, args.new_password))
 
 if __name__ == "__main__":
     main()
