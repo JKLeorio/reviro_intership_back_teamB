@@ -11,7 +11,7 @@ from api.auth import get_user_manager_context
 
 
 
-async def createsuperuser(email: str, password: str):
+async def create_superuser(email: str, password: str):
     async with get_async_session_context() as session:
         async with get_user_db_context(session=session) as user_db:
             if await session.scalar(select(User).where(User.email == email)):
@@ -25,6 +25,17 @@ async def createsuperuser(email: str, password: str):
                     )
                 )
                 print(f"Суперпользователь создан: {user.email}")
+
+async def delete_superuser(email : str):
+    async with get_async_session_context() as session:
+        async with get_user_db_context(session=session) as user_db:
+            if await session.scalar(select(User).where(User.email == email)):
+                print(f'User with {email} email is already registered')
+                exit()
+            async with get_user_manager_context(user_db=user_db) as user_manager:
+                user = await user_manager.get_by_email(user_email=email)
+                await user_manager.delete(user=user)
+                print(f"superuser succesfull deleted")
 
 
 def main():
@@ -44,7 +55,7 @@ def main():
         sys.exit(1)
 
     if args.command == "createsuperuser":
-        asyncio.run(createsuperuser(args.email, args.password))
+        asyncio.run(create_superuser(args.email, args.password))
 
 if __name__ == "__main__":
     main()
