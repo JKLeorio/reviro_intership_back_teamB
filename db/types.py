@@ -19,3 +19,9 @@ class Level(str, Enum):
     B2 = "B2"
     C1 = "C1"
     C2 = "C2"
+
+
+class PaymentMethod(str, Enum):
+    CASH = 'cash'
+    CARD = 'card'
+    TRANSFER = 'transfer'
