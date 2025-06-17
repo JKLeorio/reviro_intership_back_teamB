@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from models.group import Group
-    from models.payment import Payment, Subscription
+    from models.payment import Payment #,Subscription
 
 
 student_group_association_table = Table(
@@ -42,5 +42,5 @@ class User(SQLAlchemyBaseUserTable[int], Base):
         back_populates="students"
     )
 
-    subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="owner")
+    # subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="owner")
     payments: Mapped[list["Payment"]] = relationship(back_populates="owner")
