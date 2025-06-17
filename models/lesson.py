@@ -31,11 +31,13 @@ class Lesson(Base):
     lesson_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     lesson_end: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
+    teacher_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+
     group_id: Mapped[int] = mapped_column(ForeignKey('groups.id'))
     group: Mapped["Group"] = relationship(back_populates='lessons')
 
     classroom_id: Mapped[int] = mapped_column(ForeignKey('classrooms.id'))
-    classroom: Mapped["Classroom"] = relationship(back_populates='lesson')
+    classroom: Mapped["Classroom"] = relationship(back_populates='lessons')
 
     homework: Mapped[List["Homework"]] = relationship(back_populates='lesson', cascade='all, delete-orphan')
 
