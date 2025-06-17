@@ -8,6 +8,10 @@ from utils.date_time_utils import get_current_time
 from db.dbbase import Base
 from db.types import Role
 from models.group import Group
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.group import Group
 
 
 student_group_association_table = Table(
@@ -26,7 +30,6 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     phone_number: Mapped[str] = mapped_column(String, unique=True, nullable=True)
-    avatar_url: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=get_current_time)
 
