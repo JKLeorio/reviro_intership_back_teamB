@@ -3,7 +3,7 @@ from fastapi_users import FastAPIUsers, fastapi_users
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.permissions import require_roles
-from db.models import User
+from models.user import User
 from db.database import get_user_db, get_async_session
 from db.schemas import AdminRegister, UserCreate, UserRegister, UserResponse
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
