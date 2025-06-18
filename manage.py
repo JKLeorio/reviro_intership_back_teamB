@@ -5,7 +5,7 @@ import sys
 from sqlalchemy import select
 
 from db.database import get_async_session_context, get_user_db_context
-from db.models import User
+from models.user import User
 from db.schemas import SuperAdminCreate, SuperAdminUpdate
 from api.auth import get_user_manager_context
 
