@@ -4,7 +4,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi import Depends
-from .models import User, Base
+from db.dbbase import Base
+from models.user import User
 from decouple import config
 
 DB_ENGINE = config('DB_ENGINE', default='postgresql+asyncpg')
