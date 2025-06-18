@@ -42,6 +42,8 @@ class UserUpdate(BaseModel):
         None, description="User's birth date, iso 8601 format")
 
 class SuperAdminCreate(schemas.BaseUserCreate):
+    first_name: str = "Super"
+    last_name: str = "Admin"
     is_superuser: bool = True
     is_active: bool = True
     is_verified: bool = True
