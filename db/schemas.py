@@ -16,9 +16,11 @@ class UserResponse(BaseModel):
     id: int
     first_name: str
     last_name: str
-    email: str
-    is_active: bool
+    email: EmailStr
     phone_number: Optional[str] = None
+
+    class Config:
+        orm_mode = True
 
 
 class UserRegister(BaseModel):
@@ -29,6 +31,7 @@ class UserRegister(BaseModel):
     role: Role = Field(
         Role.STUDENT,
         description="User role, default is 'STUDENT'")
+    phone_number: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
@@ -37,9 +40,6 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = Field(None, max_length=254)
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
-    sex: Optional[Gender] = None
-    birth_date: Optional[datetime] = Field(
-        None, description="User's birth date, iso 8601 format")
 
 class SuperAdminCreate(schemas.BaseUserCreate):
     first_name: str = "Super"
@@ -52,3 +52,7 @@ class SuperAdminCreate(schemas.BaseUserCreate):
 
 class SuperAdminUpdate(schemas.BaseUserUpdate):
     pass
+    
+
+class TeacherResponse(UserResponse):
+    role: str

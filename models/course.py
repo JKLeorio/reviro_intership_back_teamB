@@ -8,6 +8,7 @@ from db.dbbase import Base
 if TYPE_CHECKING:
     from models.group import Group
     from models.enrollment import Enrollment
+    #from models.payment import Subscription
 
 
 idpk = Annotated[int, mapped_column(primary_key=True, autoincrement=True)]
@@ -41,6 +42,7 @@ class Course(Base):
     id: Mapped[idpk]
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
+    description: Mapped[str] = mapped_column(String, nullable=False)
     language_id: Mapped[int] = mapped_column(ForeignKey('languages.id', ondelete="CASCADE"))
     level_id: Mapped[int] = mapped_column(ForeignKey('levels.id', ondelete="CASCADE"))
     created_at: Mapped[created_at]
@@ -50,3 +52,5 @@ class Course(Base):
 
     groups: Mapped[List["Group"]] = relationship(back_populates="course", cascade='all, delete-orphan')
     enrollments: Mapped[List["Enrollment"]] = relationship(back_populates='course', cascade="all, delete-orphan")
+    #Временно cascade
+    #subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="course", cascade="all, delete-ophan")
