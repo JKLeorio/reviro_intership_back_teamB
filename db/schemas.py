@@ -40,6 +40,18 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = Field(None, max_length=254)
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
+
+class SuperAdminCreate(schemas.BaseUserCreate):
+    first_name: str = "Super"
+    last_name: str = "Admin"
+    is_superuser: bool = True
+    is_active: bool = True
+    is_verified: bool = True
+    role: Role = Role.ADMIN
+
+
+class SuperAdminUpdate(schemas.BaseUserUpdate):
+    pass
     
 
 class TeacherResponse(UserResponse):
