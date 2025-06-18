@@ -6,28 +6,41 @@ from .types import Role, Gender
 
 
 class UserCreate(schemas.BaseUserCreate):
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr = Field(..., max_length=254)
     role: Role = Field(Role.STUDENT)
 
 
 class UserResponse(BaseModel):
     id: int
-    email: str
-    role: Role
-    is_active: bool
-    is_admin: bool
-    is_verified: bool
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone_number: Optional[str] = None
+
+    class Config:
+        orm_mode = True
 
 
 class UserRegister(BaseModel):
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr = Field(..., max_length=254)
+    password: str = Field(..., min_length=8, max_length=128)
     role: Role = Field(
         Role.STUDENT,
-        description="User role, default is 'student'")
+        description="User role, default is 'STUDENT'")
+    phone_number: Optional[str] = None
 
-class AdminRegister(BaseModel):
-    email: EmailStr = Field(..., max_length=254)
-    role: Role = Field(
-        Role.ADMIN,
-        description="User role, default is 'admin'")
 
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    email: Optional[EmailStr] = Field(None, max_length=254)
+    phone_number: Optional[str] = Field(
+        None, description="User's phone number")
+    
+
+class TeacherResponse(UserResponse):
+    role: str
