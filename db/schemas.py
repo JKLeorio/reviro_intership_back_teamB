@@ -1,8 +1,8 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr, FilePath
-from typing import Optional, List
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional
 from fastapi_users import schemas
-from .types import Role, Gender, Level
+from .types import Role, Gender
 
 
 class UserCreate(schemas.BaseUserCreate):
