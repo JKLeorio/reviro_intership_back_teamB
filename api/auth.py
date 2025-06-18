@@ -1,3 +1,4 @@
+import contextlib
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_users import FastAPIUsers, fastapi_users
 from sqlalchemy import select
@@ -59,6 +60,7 @@ current_teacher_user = require_roles("teacher")
 current_student_user = require_roles("student")
 
 router = fastapi_users.get_auth_router(auth_backend)
+get_user_manager_context = contextlib.asynccontextmanager(get_user_manager)
 
 
 # @router.post("/register", response_model=UserResponse)
