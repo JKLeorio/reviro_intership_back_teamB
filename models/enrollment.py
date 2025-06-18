@@ -25,5 +25,7 @@ class Enrollment(Base):
 
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"))
     course: Mapped["Course"] = relationship(back_populates="enrollments")
