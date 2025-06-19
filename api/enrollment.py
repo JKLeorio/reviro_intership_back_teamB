@@ -11,7 +11,7 @@ from schemas.enrollment import EnrollmentCreate, EnrollmentResponse, EnrollmentU
 from models.enrollment import Enrollment
 from models.course import Course
 
-router = routing.APIRouter(prefix='/enrollment/')
+enrollment_router = routing.APIRouter()
 
 
 # @router.get('/all', response_model=List[EnrollmentResponse])
@@ -22,7 +22,7 @@ router = routing.APIRouter(prefix='/enrollment/')
 #     enrollments = await session.execute(select(Enrollment))
 #     return enrollments
 
-@router.get('/my', response_class=List[EnrollmentResponse])
+@enrollment_router.get('/my', response_class=List[EnrollmentResponse])
 async def user_enrollment(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
@@ -30,7 +30,7 @@ async def user_enrollment(
     enrollments = await session.execute(select(Enrollment).where(User.id == user.id))
     return enrollments
 
-@router.get('/{enrollment_id}/detail', response_model=EnrollmentResponse)
+@enrollment_router.get('/{enrollment_id}/detail', response_model=EnrollmentResponse)
 async def enrollment_detail(
     enrollment_id: int,
     session: AsyncSession = Depends(get_async_session),
@@ -46,7 +46,7 @@ async def enrollment_detail(
     raise HTTPException(detail={"detail" : "enrollment doesn't exist or you haven't permission"})
 
 
-@router.post('/create', response_model=EnrollmentResponse)
+@enrollment_router.post('/create', response_model=EnrollmentResponse)
 async def create_enrollment(
     enrollment_data: EnrollmentCreate,
     session: AsyncSession = Depends(get_async_session),
@@ -59,7 +59,7 @@ async def create_enrollment(
     return new_enrollment
 
 
-@router.put('/{enrollment_id}/update', response_model=EnrollmentResponse)
+@enrollment_router.put('/{enrollment_id}/update', response_model=EnrollmentResponse)
 async def update_enrollment(
     enrollment_id: int,
     enrollment_data: EnrollmentUpdate,
@@ -80,7 +80,7 @@ async def update_enrollment(
         return enrollment
     raise HTTPException(detail={"detail" : "you haven't permission"})
 
-@router.delete('/{enrollment_id}/detail', status_code=status.HTTP_204_NO_CONTENT)
+@enrollment_router.delete('/{enrollment_id}/detail', status_code=status.HTTP_204_NO_CONTENT)
 async def enrollment_detail(
     enrollment_id: int,
     session: AsyncSession = Depends(get_async_session),
