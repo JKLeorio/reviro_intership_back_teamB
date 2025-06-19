@@ -5,8 +5,9 @@ import sys
 from sqlalchemy import select
 
 from db.database import get_async_session_context, get_user_db_context
+from db.types import Role
 from models.user import User
-from db.schemas import SuperAdminCreate, SuperAdminUpdate
+from schemas.user import SuperAdminCreate, SuperAdminUpdate
 from api.auth import get_user_manager_context
 
 
@@ -20,18 +21,18 @@ async def create_superuser(email: str, password: str):
             async with get_user_manager_context(user_db=user_db) as user_manager:
                 user = await user_manager.create(
                     SuperAdminCreate(
+                    first_name="Super",
+                    last_name="Admin",
                     email=email,
-                    password=password
+                    password=password,
+                    role=Role.ADMIN
                     )
                 )
-                print(f"Суперпользователь создан: {user.email}")
+                print(f"superuser created with {user.email}")
 
 async def delete_superuser(email : str):
     async with get_async_session_context() as session:
         async with get_user_db_context(session=session) as user_db:
-            if await session.scalar(select(User).where(User.email == email)):
-                print(f'User with {email} email is already registered')
-                exit()
             async with get_user_manager_context(user_db=user_db) as user_manager:
                 user = await user_manager.get_by_email(user_email=email)
                 await user_manager.delete(user=user)
@@ -42,13 +43,10 @@ async def update_superuser_password(email : str, password : str):
     user_update = SuperAdminUpdate(email=email, password=password)
     async with get_async_session_context() as session:
         async with get_user_db_context(session=session) as user_db:
-            if await session.scalar(select(User).where(User.email == email)):
-                print(f'User with {email} email is already registered')
-                exit()
             async with get_user_manager_context(user_db=user_db) as user_manager:
                 user = await user_manager.get_by_email(user_email=email)
                 await user_manager.update(user_update=user_update, user=user)
-                print(f"Суперпользователь создан: {user.email}")
+                print(f"superuser password updated: {user.email}")
 
 
 def main():
@@ -75,9 +73,9 @@ def main():
 
     if args.command == "createsuperuser":
         asyncio.run(create_superuser(args.email, args.password))
-    elif args.command == "updatesuperuser":
-        asyncio.run(delete_superuser(args.user_email))
     elif args.command == "deletesuperuser":
+        asyncio.run(delete_superuser(args.user_email))
+    elif args.command == "updatesuperuser":
         asyncio.run(update_superuser_password(args.user_email, args.new_password))
 
 if __name__ == "__main__":

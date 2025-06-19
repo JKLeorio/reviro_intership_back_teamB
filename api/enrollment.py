@@ -14,39 +14,40 @@ from models.course import Course
 enrollment_router = routing.APIRouter()
 
 
-# @router.get('/all', response_model=List[EnrollmentResponse])
-# async def enrollment_list(
-#     session: AsyncSession = Depends(get_async_session),
-#     user: User = Depends(current_admin_user)
-# ):
-#     enrollments = await session.execute(select(Enrollment))
-#     return enrollments
-
-@enrollment_router.get('/my', response_class=List[EnrollmentResponse])
-async def user_enrollment(
+@enrollment_router.get('/all', response_model=List[EnrollmentResponse])
+async def enrollment_list(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
-    enrollments = await session.execute(select(Enrollment).where(User.id == user.id))
-    return enrollments
+    enrollments = await session.execute(select(Enrollment))
+    return enrollments.scalars().all()
 
-@enrollment_router.get('/{enrollment_id}/detail', response_model=EnrollmentResponse)
+@enrollment_router.get('/my', response_model=List[EnrollmentResponse], status_code=status.HTTP_200_OK)
+async def user_enrollment(
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_user)
+):
+    enrollments = await session.execute(select(Enrollment).where(Enrollment.user_id == user.id))
+    return enrollments.scalars().all()
+
+@enrollment_router.get('/{enrollment_id}/detail', response_model=EnrollmentResponse, status_code=status.HTTP_200_OK)
 async def enrollment_detail(
     enrollment_id: int,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_user)
 ):
-    enrollment = await session.execute(select(Enrollment).where(Enrollment.id == enrollment_id)).first()
+    result = await session.execute(select(Enrollment).where(Enrollment.id == enrollment_id))
+    enrollment = result.scalars().first()
     if not enrollment:
-        raise HTTPException(detail={"detail" : "enrollment doesn't exist"})
-    # elif user.role == Role.ADMIN:
-    #     return enrollment
+        raise HTTPException(detail={"detail" : "enrollment doesn't exist"}, status_code=status.HTTP_404_NOT_FOUND)
+    elif user.role == Role.ADMIN:
+        return enrollment
     elif user.id == enrollment.user_id:
         return enrollment
-    raise HTTPException(detail={"detail" : "enrollment doesn't exist or you haven't permission"})
+    raise HTTPException(detail={"detail" : "you haven't permission"}, status_code=status.HTTP_403_FORBIDDEN)
 
 
-@enrollment_router.post('/create', response_model=EnrollmentResponse)
+@enrollment_router.post('/create', response_model=EnrollmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_enrollment(
     enrollment_data: EnrollmentCreate,
     session: AsyncSession = Depends(get_async_session),
@@ -59,26 +60,25 @@ async def create_enrollment(
     return new_enrollment
 
 
-@enrollment_router.put('/{enrollment_id}/update', response_model=EnrollmentResponse)
+@enrollment_router.put('/{enrollment_id}/update', response_model=EnrollmentResponse, status_code=status.HTTP_200_OK)
 async def update_enrollment(
     enrollment_id: int,
     enrollment_data: EnrollmentUpdate,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_user),
 ):
-    enrollment = await session.execute(select(Enrollment).where(Enrollment.id == enrollment_id)).first()
+    result = await session.execute(select(Enrollment).where(Enrollment.id == enrollment_id))
+    enrollment = result.scalars().first()
+
     if not enrollment:
-        raise HTTPException(detail={"detail" : "enrollment doesn't exist"})
-    # elif user.role == Role.ADMIN:
-    #     return enrollment
-    elif user.id == enrollment.user_id:
-        for key, value in enrollment_data.items():
+        raise HTTPException(detail={"detail" : "enrollment doesn't exist"}, status_code=status.HTTP_404_NOT_FOUND)
+    elif user.role == Role.ADMIN or user.id == enrollment.user_id:
+        for key, value in enrollment_data.model_dump().items():
             setattr(enrollment, key, value)
-        session.add(enrollment)
         await session.commit()
         await session.refresh(enrollment)
         return enrollment
-    raise HTTPException(detail={"detail" : "you haven't permission"})
+    raise HTTPException(detail={"detail" : "you haven't permission"}, status_code=status.HTTP_403_FORBIDDEN)
 
 @enrollment_router.delete('/{enrollment_id}/detail', status_code=status.HTTP_204_NO_CONTENT)
 async def enrollment_detail(
@@ -86,13 +86,13 @@ async def enrollment_detail(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_user)
 ):
-    enrollment = await session.execute(select(Enrollment).where(Enrollment.id == enrollment_id)).first()
+    result = await session.execute(select(Enrollment).where(Enrollment.id == enrollment_id))
+    enrollment = result.scalars().first()
+
     if not enrollment:
-        raise HTTPException(detail={"detail" : "enrollment doesn't exist"})
-    # elif user.role == Role.ADMIN:
-    #     return enrollment
-    elif user.id == enrollment.user_id:
+        raise HTTPException(detail={"detail" : "enrollment doesn't exist"}, status_code=status.HTTP_404_NOT_FOUND)
+    elif user.role == Role.ADMIN or user.id == enrollment.user_id:
         await session.delete(enrollment)
         await session.commit()
-        return {"detail" : "succesfull deleted"}
-    raise HTTPException(detail={"detail" : "enrollment doesn't exist or you haven't permission"})
+        return
+    raise HTTPException(detail={"detail" : "you haven't permission"}, status_code=status.HTTP_403_FORBIDDEN)
