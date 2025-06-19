@@ -43,7 +43,9 @@ class Course(Base):
     id: Mapped[idpk]
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
+
     description: Mapped[str] = mapped_column(Text, nullable=True)
+
     language_id: Mapped[int] = mapped_column(ForeignKey('languages.id', ondelete="CASCADE"))
     level_id: Mapped[int] = mapped_column(ForeignKey('levels.id', ondelete="CASCADE"))
     created_at: Mapped[created_at]
