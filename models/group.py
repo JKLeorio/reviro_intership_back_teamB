@@ -6,7 +6,6 @@ from sqlalchemy.orm import mapped_column, Mapped, relationship
 from utils.date_time_utils import get_current_time
 from models.lesson import Lesson
 from models.course import Course
-from models.payment import Payment
 
 
 from typing import TYPE_CHECKING
@@ -17,6 +16,7 @@ if TYPE_CHECKING:
 
 
 class Group(Base):
+    from models.payment import Payment
     __tablename__ = 'groups'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
