@@ -33,7 +33,8 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=get_current_time)
 
-    role: Mapped[Role] = mapped_column(Enum(Role), nullable=False)
+    role: Mapped[Role] = mapped_column(
+        Enum(Role, name="role", create_type=False), nullable=False)
 
     groups_taught: Mapped[List["Group"]] = relationship(back_populates="teacher")
 
