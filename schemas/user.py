@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, EmailStr, Field
 from fastapi_users import schemas
 
@@ -10,7 +10,7 @@ class UserCreate(schemas.BaseUserCreate):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr = Field(..., max_length=254)
-    role: Role = Field(Role.STUDENT)
+    # role: Role = Field(Role.STUDENT)
 
 
 class UserResponse(BaseModel):
@@ -21,7 +21,7 @@ class UserResponse(BaseModel):
     phone_number: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserRegister(BaseModel):
@@ -29,9 +29,9 @@ class UserRegister(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr = Field(..., max_length=254)
     password: str = Field(..., min_length=8, max_length=128)
-    role: Role = Field(
-        Role.STUDENT,
-        description="User role, default is 'STUDENT'")
+    # role: Role = Field(
+    #     Role.STUDENT,
+    #     description="User role, default is 'STUDENT'")
     phone_number: Optional[str] = None
 
 
@@ -48,14 +48,19 @@ class TeacherResponse(UserResponse):
 
 
 class SuperAdminCreate(schemas.BaseUserCreate):
-    first_name: str = "Super"
-    last_name: str = "Admin"
-    is_superuser: bool = True
-    is_active: bool = True
-    is_verified: bool = True
-    role: Role = Role.ADMIN
+    first_name: str = Field(default="Super")
+    last_name: str = Field(default="Admin")
+    is_superuser: bool = Field(default=True)
+    is_active: bool = Field(default=True)
+    is_verified: bool = Field(default=True)
+    role: Role = Field(default=Role.ADMIN)
 
 
 class SuperAdminUpdate(schemas.BaseUserUpdate):
     pass
+
+class AdminRegister(schemas.BaseUserCreate):
+    first_name: str = Field(default="Just")
+    last_name: str = Field(default="Admin")
+    role: Literal[Role.ADMIN] = Role.ADMIN
     

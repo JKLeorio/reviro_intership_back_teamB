@@ -3,20 +3,21 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 from models.enrollment import Enrollment
-from schemas.course import CouseResponse
+from schemas.course import CourseRead
 
 class EnrollmentResponse(BaseModel):
     id: int
-    first_nme: str
+    first_name: str
     last_name: str
     created_at: datetime
+    email: EmailStr
     phone_number: Optional[str] = None
     is_approved: bool
-    course: CouseResponse
-    user_id: Optional[int]
+    course_id: int
+    user_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class EnrollmentCreate(BaseModel):
@@ -25,7 +26,6 @@ class EnrollmentCreate(BaseModel):
     email: EmailStr
     phone_number: Optional[str]
     course_id: int
-    user_id: Optional[int]
 
 
 class EnrollmentUpdate(BaseModel):
@@ -33,5 +33,5 @@ class EnrollmentUpdate(BaseModel):
     last_name: Optional[str]
     email: Optional[EmailStr]
     phone_number: Optional[str]
-    course_id: Optional[int]
-    user_id: Optional[int]
+    # course_id: Optional[int]
+    # user_id: Optional[int]

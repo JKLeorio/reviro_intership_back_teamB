@@ -35,7 +35,7 @@ class Group(Base):
     teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     teacher: Mapped["User"] = relationship(back_populates="groups_taught")
 
-    #lessons: Mapped[List["Lesson"]] = relationship(back_populates="group", cascade="all, delete-orphan")
+    lessons: Mapped[List["Lesson"]] = relationship(back_populates="group", cascade="all, delete-orphan")
 
     students: Mapped[List["User"]] = relationship(secondary="student_group_association_table",
                                                      back_populates="groups_joined")
