@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.permissions import require_roles
 from models.user import User
 from db.database import get_user_db, get_async_session
-from db.schemas import AdminRegister, UserCreate, UserRegister, UserResponse
+from schemas.user import UserCreate, UserRegister, UserResponse, UserUpdate, AdminRegister
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from fastapi import Request
 from typing import Optional
@@ -16,7 +16,7 @@ from utils.password_utils import generate_password
 
 SECRET = config('SECRET')
 
-router = APIRouter()
+authRouter = APIRouter()
 
 bearer_transport = BearerTransport(tokenUrl="auth/login")
 auth_backend = AuthenticationBackend(
@@ -53,13 +53,14 @@ fastapi_users = FastAPIUsers[User, int](
     get_user_manager,
     [auth_backend]
 )
-current_user = fastapi_users.current_user
+current_user = fastapi_users.current_user()
 current_super_user = fastapi_users.current_user(superuser=True)
 current_admin_user = require_roles("admin")
 current_teacher_user = require_roles("teacher")
 current_student_user = require_roles("student")
+optional_current_user = fastapi_users.current_user(optional=True)
 
-router = fastapi_users.get_auth_router(auth_backend)
+authRouter = fastapi_users.get_auth_router(auth_backend)
 get_user_manager_context = contextlib.asynccontextmanager(get_user_manager)
 
 
@@ -78,7 +79,7 @@ get_user_manager_context = contextlib.asynccontextmanager(get_user_manager)
 #     return user
 
 
-@router.post("/register-admin", response_model=UserResponse)
+@authRouter.post("/register-admin", response_model=UserResponse)
 async def register_admin(
     user_data: AdminRegister,
     user_manager: UserManager = Depends(get_user_manager),
@@ -89,10 +90,19 @@ async def register_admin(
     Register new admin, only for superadmin
     NOTE -> The email field when creating a user is used as the username when logging in.
     """
-    pass
+    if await session.scalar(select(User).where(User.email == user_data.email)):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    password = generate_password()
+    user_data_dump = user_data.model_dump()
+    user_data_dump['password'] = password
+    
+    #Password sending logic here, for example sending into user email
+    #smtp_server.send(message=f'here your password {password} for {url}')
+
+    user = await user_manager.create(UserCreate(user_data_dump))
 
 
-@router.post("/register-user", response_model=UserResponse)
+@authRouter.post("/register-user", response_model=UserResponse)
 async def register_user(
     user_data: UserRegister,
     user_manager: UserManager = Depends(get_user_manager),
