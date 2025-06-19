@@ -22,7 +22,7 @@ async def enrollment_list(
     enrollments = await session.execute(select(Enrollment))
     return enrollments
 
-@router.get('/my', response_class=List[Enrollment])
+@router.get('/my', response_class=List[EnrollmentResponse])
 async def user_enrollment(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
