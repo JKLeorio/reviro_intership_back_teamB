@@ -39,7 +39,7 @@ class Lesson(Base):
     classroom_id: Mapped[int] = mapped_column(ForeignKey('classrooms.id'))
     classroom: Mapped["Classroom"] = relationship(back_populates='lessons')
 
-    homework: Mapped[List["Homework"]] = relationship(back_populates='lesson', cascade='all, delete-orphan')
+    homeworks: Mapped[List["Homework"]] = relationship(back_populates='lesson', cascade='all, delete-orphan')
 
 
 class Homework(Base):
