@@ -20,6 +20,7 @@ class Level(str, Enum):
     C1 = "C1"
     C2 = "C2"
 
+
 class SubscriptionStatus(str, Enum):
     PENDING = "pending"
     ACTIVE = "active"
