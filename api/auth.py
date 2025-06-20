@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.permissions import require_roles
 from models.user import User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, UserCreate, UserRegister, UserResponse, UserUpdate, AdminRegister
+from schemas.user import AdminCreate, UserCreate, UserRegister, UserResponse, AdminRegister
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from fastapi import Request
 from typing import Optional
