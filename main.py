@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from api.enrollment import enrollment_router
 from api.auth import authRouter
 from api.course import course_router, language_router, level_router
+from api.group import group_students_router, group_router
 
 app = FastAPI()
 
@@ -12,6 +13,8 @@ app.include_router(enrollment_router, prefix="/enrollment", tags=["Enrollments"]
 app.include_router(course_router, prefix="/courses", tags=["Courses"])
 app.include_router(language_router, prefix="/languages", tags=["Languages"])
 app.include_router(level_router, prefix="/levels", tags=["Levels"])
+app.include_router(group_router, prefix="/group", tags=["group"])
+app.include_router(group_students_router, prefix="/group-students", tags=["group-students"])
 
 
 if __name__ == "__main__":
