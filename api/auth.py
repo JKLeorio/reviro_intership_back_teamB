@@ -60,6 +60,8 @@ current_teacher_user = require_roles("teacher", "admin")
 current_student_user = require_roles("student", "teacher", "student")
 optional_current_user = fastapi_users.current_user(optional=True)
 
+current_only_student_user = require_roles("student", "admin")
+
 authRouter = fastapi_users.get_auth_router(auth_backend)
 get_user_manager_context = contextlib.asynccontextmanager(get_user_manager)
 
