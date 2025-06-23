@@ -18,7 +18,8 @@ from models.group import Group
 from models.course import Course
 from schemas.group import (
     GroupCreate, 
-    GroupResponse, 
+    GroupResponse,
+    GroupStundentPartialUpdate, 
     GroupUpdate, 
     GroupPartialUpdate,
     GroupStudentResponse,
@@ -43,7 +44,10 @@ async def group_students_list(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user)
 ):
-    query = select(Group).offset(offset=offset).limit(limit=limit).options(selectinload(Group.students))
+    query = select(Group).offset(offset=offset).limit(limit=limit).options(
+        selectinload(Group.students),
+        selectinload(Group.teacher)
+        )
     groups = await session.execute(query)
     return groups.scalars().all()
 
@@ -58,9 +62,15 @@ async def group_students_detail(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user)
 ):
-    group = session.get(Group, group_id, options=[selectinload(Group.students)])
+    group = await session.get(Group, group_id, options=[
+        selectinload(Group.students),
+        selectinload(Group.teacher)
+        ])
     if not group:
-        raise HTTPException(detail={"detail" : "Group doesn't exists"})
+        raise HTTPException(
+            detail={"detail" : "Group doesn't exists"},
+                    status_code=status.HTTP_404_NOT_FOUND
+                    )
     return group
 
 
@@ -69,15 +79,20 @@ async def group_students_detail(
         response_model=GroupStudentResponse,
         status_code=status.HTTP_200_OK
         )
-async def group_students_detail(
+async def group_students_update(
     group_id: int,
     group_update: GroupStudentUpdate,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user)
 ):
-    group = await session.get(Group, group_id)
+    group = await session.get(Group, group_id, options=[
+        selectinload(Group.students),
+        selectinload(Group.teacher)])
     if not group:
-        raise HTTPException(detail={"detail" : "Group doesn't exists"})
+        raise HTTPException(
+            detail={"detail" : "Group doesn't exists"},
+            status_code=status.HTTP_404_NOT_FOUND
+            )
     result = await session.execute(select(User)
                                    .where(
                                        User.id.in_(group_update.students)
@@ -85,11 +100,74 @@ async def group_students_detail(
                                     )
     students = result.scalars().all()
     if len(students) != len(group_update.students):
-        raise HTTPException(detail={"detail" : "The request has a user id that does not exist"})
-    group.students = students
+        raise HTTPException(
+            detail={
+                "detail" : "The request has a user id that does not exist"
+                },
+                status_code=status.HTTP_400_BAD_REQUEST
+                )
+    
+    print(group_update.model_dump())
+    for key, value in group_update.model_dump(exclude_unset=True).items():
+        if key == "students":
+            group.students = students
+        else:
+            setattr(group, key, value)
 
     await session.commit()
-    await session.refresh(group, attribute_names=['students'])
+    await session.refresh(
+        group,
+        # attribute_names=['students', 'teacher']
+        )
+    return group
+
+
+@group_students_router.patch(
+        '/{group_id}',
+        response_model=GroupStudentResponse,
+        status_code=status.HTTP_200_OK
+        )
+async def group_students_partial_update(
+    group_id: int,
+    group_update: GroupStundentPartialUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_teacher_user)
+):
+    group = await session.get(Group, group_id, options=[
+        selectinload(Group.students),
+        selectinload(Group.teacher)])
+    if not group:
+        raise HTTPException(
+            detail={"detail" : "Group doesn't exists"},
+            status_code=status.HTTP_404_NOT_FOUND
+            )
+    result = await session.execute(select(User)
+                                   .where(
+                                       User.id.in_(group_update.students)
+                                       )
+                                    )
+    students = result.scalars().all()
+    if len(students) != len(group_update.students):
+        raise HTTPException(
+            detail={
+                "detail" : "The request has a user id that does not exist"
+                },
+                status_code=status.HTTP_400_BAD_REQUEST
+                )
+    
+    for key, value in group_update.model_dump(exclude_unset=True).items():
+        if key == "students":
+            group.students = students
+        else:
+            setattr(group, key, value)
+
+
+    await session.commit()
+    await session.refresh(
+        group,
+        # attribute_names=['students', 'teacher']
+        )
+    return group
 
 
 
@@ -172,7 +250,8 @@ async def group_update(
     groups = await session.execute(select(Group).where(Group.id == group_id))
     group = groups.scalar_one_or_none()
     if not group:
-        raise HTTPException(detail={"detail" : "group doesn't exist"})
+        raise HTTPException(detail={"detail" : "group doesn't exist"},
+                             status_code=status.HTTP_404_NOT_FOUND)
     for key, value in group_data.model_dump().items():
         setattr(group, key, value)
     await session.commit()
@@ -196,7 +275,8 @@ async def group_partial_update(
     groups = await session.execute(select(Group).where(Group.id == group_id))
     group = groups.scalar_one_or_none()
     if not group:
-        raise HTTPException(detail={"detail" : "group doesn't exist"})
+        raise HTTPException(detail={"detail" : "group doesn't exist"},
+                            status_code=status.HTTP_404_NOT_FOUND)
     for key, value in group_data.model_dump(exclude_unset=True).items():
         setattr(group, key, value)
     await session.commit()
