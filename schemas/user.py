@@ -28,7 +28,6 @@ class UserRegister(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr = Field(..., max_length=254)
-    password: str = Field(..., min_length=8, max_length=128)
     # role: Role = Field(
     #     Role.STUDENT,
     #     description="User role, default is 'STUDENT'")
@@ -41,7 +40,10 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = Field(None, max_length=254)
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
-    
+
+      
+      
+
 class StudentResponse(BaseModel):
     id: int
     first_name: str
@@ -52,9 +54,14 @@ class TeacherResponse(UserResponse):
     role: str
 
 
-class SuperAdminCreate(schemas.BaseUserCreate):
-    first_name: str = Field(default="Super")
-    last_name: str = Field(default="Admin")
+class AdminCreate(UserCreate):
+    role: Role = Role.ADMIN
+
+
+class SuperAdminCreate(UserCreate):
+
+    email: EmailStr
+    password: str
     is_superuser: bool = Field(default=True)
     is_active: bool = Field(default=True)
     is_verified: bool = Field(default=True)
@@ -64,8 +71,6 @@ class SuperAdminCreate(schemas.BaseUserCreate):
 class SuperAdminUpdate(schemas.BaseUserUpdate):
     pass
 
-class AdminRegister(schemas.BaseUserCreate):
-    first_name: str = Field(default="Just")
-    last_name: str = Field(default="Admin")
+class AdminRegister(UserRegister):
     role: Literal[Role.ADMIN] = Role.ADMIN
     
