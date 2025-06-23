@@ -41,6 +41,8 @@ class UserUpdate(BaseModel):
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
 
+      
+      
 
 class StudentResponse(BaseModel):
     id: int
