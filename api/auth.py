@@ -57,6 +57,7 @@ current_user = fastapi_users.current_user()
 current_super_user = fastapi_users.current_user(superuser=True)
 current_admin_user = require_roles("admin")
 current_teacher_user = require_roles("teacher", "admin")
+current_student_user = require_roles("student", "teacher", "student")
 current_student_user = require_roles("student", "teacher", "admin")
 optional_current_user = fastapi_users.current_user(optional=True)
 
