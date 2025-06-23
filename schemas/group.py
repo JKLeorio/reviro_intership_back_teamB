@@ -48,3 +48,6 @@ class GroupStudentResponse(GroupResponse):
 
 class GroupStudentUpdate(GroupUpdate):
     students: List[int]
+
+class GroupStundentPartialUpdate(GroupPartialUpdate):
+    students: Optional[List[int]]
