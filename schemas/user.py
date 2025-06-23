@@ -47,12 +47,14 @@ class StudentResponse(BaseModel):
     first_name: str
     last_name: str
 
+
 class TeacherResponse(UserResponse):
     role: str
 
 
 class AdminCreate(UserCreate):
     role: Role = Role.ADMIN
+
 
 class SuperAdminCreate(BaseModel):
     first_name: str = Field(default="Super")
@@ -65,6 +67,7 @@ class SuperAdminCreate(BaseModel):
 
 class SuperAdminUpdate(schemas.BaseUserUpdate):
     pass
+
 
 class AdminRegister(UserRegister):
     role: Literal[Role.ADMIN] = Role.ADMIN
