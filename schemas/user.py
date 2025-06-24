@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Literal, Optional
+from typing import List, Literal, Optional
 from pydantic import BaseModel, EmailStr, Field
 from fastapi_users import schemas
 
@@ -19,7 +20,7 @@ class UserResponse(BaseModel):
     last_name: str
     email: str
     phone_number: Optional[str] = None
-
+    role: Role
     class Config:
         from_attributes = True
 
@@ -28,9 +29,9 @@ class UserRegister(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr = Field(..., max_length=254)
-    # role: Role = Field(
-    #     Role.STUDENT,
-    #     description="User role, default is 'STUDENT'")
+    role: Role = Field(
+        Role.STUDENT,
+        description="User role, default is 'STUDENT'")
     phone_number: Optional[str] = None
 
 class UserUpdate(UserCreate):
@@ -56,6 +57,11 @@ class StudentResponse(BaseModel):
 class TeacherResponse(UserResponse):
     role: str
 
+class StudentTeacherRegister(UserRegister):
+    role: Literal[Role.STUDENT, Role.TEACHER] = Role.STUDENT
+
+class StudentTeacherCreate(UserCreate):
+    role: Role = Role.STUDENT
 
 class AdminCreate(UserCreate):
     role: Role = Role.ADMIN
