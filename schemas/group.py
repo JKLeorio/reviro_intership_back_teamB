@@ -19,6 +19,7 @@ class GroupResponse(BaseModel):
     # course: CourseRead
     teacher: TeacherResponse
 
+
 class GroupCreate(BaseModel):
     name: str
     start_date: date
@@ -46,8 +47,10 @@ class GroupPartialUpdate(BaseModel):
 class GroupStudentResponse(GroupResponse):
     students: List[StudentResponse]
 
+
 class GroupStudentUpdate(GroupUpdate):
     students: List[int]
+
 
 class GroupStundentPartialUpdate(GroupPartialUpdate):
     students: Optional[List[int]]

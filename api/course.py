@@ -27,8 +27,8 @@ async def languages_list(db: AsyncSession = Depends(get_async_session)):
     return languages.scalars().all()
 
 
-@language_router.get('/{id}', response_model=LanguageRead, status_code=status.HTTP_200_OK)
-async def get_language(id: int, db: AsyncSession = Depends(get_async_session)):
+@language_router.get('/search', response_model=LanguageRead, status_code=status.HTTP_200_OK)
+async def get_language(id: int = None, name: str = None, db: AsyncSession = Depends(get_async_session)):
     result = await db.execute(select(Language).where(Language.id == id))
     language = result.scalar_one_or_none()
 
