@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.permissions import require_roles
 from models.user import User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, UserCreate, UserRegister, UserResponse, AdminRegister
+from schemas.user import AdminCreate, StudentTeacherCreate, StudentTeacherRegister, UserCreate, UserRegister, UserResponse, AdminRegister
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from fastapi import Request
 from typing import Optional
@@ -116,7 +116,7 @@ async def register_admin(
                  response_model=UserResponse,
                  status_code=status.HTTP_201_CREATED)
 async def register_user(
-    user_data: UserRegister,
+    user_data: StudentTeacherRegister,
     user_manager: UserManager = Depends(get_user_manager),
     session: AsyncSession = Depends(get_async_session),
     admin: User = Depends(current_admin_user)
@@ -130,7 +130,7 @@ async def register_user(
     password = generate_password()
     user_data_dump = user_data.model_dump()
     user_data_dump['password'] = password
-    user = await user_manager.create(UserCreate(**user_data_dump))
+    user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
 
     print(password)
     #Password sending logic here, for example sending into user email
