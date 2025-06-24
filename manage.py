@@ -25,7 +25,10 @@ async def create_superuser(email: str, password: str):
                     last_name="Admin",
                     email=email,
                     password=password,
-                    role=Role.ADMIN
+                    role=Role.ADMIN,
+                    is_superuser=True,
+                    is_active=True,
+                    is_verified=True
                     )
                 )
                 print(f"superuser created with {user.email}")
