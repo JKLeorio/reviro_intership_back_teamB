@@ -1,9 +1,12 @@
-from typing import List
+from typing import List, Optional
 from fastapi import routing, HTTPException, Depends, status
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from fastapi_filter.contrib.sqlalchemy import Filter
+from fastapi_filter.base.filter import FilterDepends
 
 from db.database import get_async_session
 from api.auth import (
@@ -33,6 +36,12 @@ teacher_router = routing.APIRouter()
 student_router = routing.APIRouter()
 
 
+class UserFilter(Filter):
+    role__in: Optional[list[str]]
+
+    class Constants(Filter.Constants):
+        model = User
+
 
 @teacher_router.get(
         '/',
@@ -54,7 +63,7 @@ async def teacher_profile(
     user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    pass 
+    pass
 
 
 
@@ -77,12 +86,15 @@ async def student_profile(
     status_code=status.HTTP_200_OK
 )
 async def user_list(
-    limit: int,
-    offset: int,
+    limit: int = 10,
+    offset: int = 0,
+    user_filter: UserFilter = FilterDepends(UserFilter),
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
     ):
-    query = select(User)
+    query = user_filter.filter(
+        select(User).offset(offset=offset).limit(limit=limit)
+        )
     users = await session.execute(query)
     return users.scalars().all()
 
