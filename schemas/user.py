@@ -56,9 +56,10 @@ class AdminCreate(UserCreate):
     role: Role = Role.ADMIN
 
 
-class SuperAdminCreate(BaseModel):
-    first_name: str = Field(default="Super")
-    last_name: str = Field(default="Admin")
+class SuperAdminCreate(UserCreate):
+
+    email: EmailStr
+    password: str
     is_superuser: bool = Field(default=True)
     is_active: bool = Field(default=True)
     is_verified: bool = Field(default=True)

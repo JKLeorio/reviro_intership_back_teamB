@@ -15,7 +15,7 @@ class Classroom(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
     lessons: Mapped[List["Lesson"]] = relationship(back_populates='classroom', cascade="all, delete-orphan")
@@ -27,6 +27,8 @@ class Lesson(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     name: Mapped[str] = mapped_column(String, nullable=False)
+
+    description: Mapped[str] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
@@ -49,6 +51,10 @@ class Lesson(Base):
     def group_name(self) -> str | None:
         return self.group.name if self.group else None
 
+    @property
+    def classroom_name(self) -> str | None:
+        return self.classroom.name if self.group else None
+
 
 class Homework(Base):
 
@@ -58,6 +64,7 @@ class Homework(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    deadline: Mapped[date] = mapped_column(Date, nullable=False)
 
     lesson_id: Mapped[int] = mapped_column(ForeignKey('lessons.id'))
     lesson: Mapped["Lesson"] = relationship(back_populates='homeworks')
