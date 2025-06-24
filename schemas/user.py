@@ -81,6 +81,3 @@ class SuperAdminUpdate(schemas.BaseUserUpdate):
 
 class AdminRegister(UserRegister):
     role: Literal[Role.ADMIN] = Role.ADMIN
-
-
-    
