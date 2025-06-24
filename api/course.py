@@ -5,8 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from api.auth import current_admin_user
+
 from db.database import get_async_session
+from db.types import Role
 from models.course import Course, Language, Level
+from models.user import User
 
 from schemas.course import LanguageRead, LanguageUpdate, LanguageBase, LevelRead, LevelBase, LevelUpdate
 from schemas.course import CourseRead, CourseBase, CourseUpdate
@@ -23,8 +27,8 @@ async def languages_list(db: AsyncSession = Depends(get_async_session)):
     return languages.scalars().all()
 
 
-@language_router.get('/{id}', response_model=LanguageRead, status_code=status.HTTP_200_OK)
-async def get_language(id: int, db: AsyncSession = Depends(get_async_session)):
+@language_router.get('/search', response_model=LanguageRead, status_code=status.HTTP_200_OK)
+async def get_language(id: int = None, name: str = None, db: AsyncSession = Depends(get_async_session)):
     result = await db.execute(select(Language).where(Language.id == id))
     language = result.scalar_one_or_none()
 
@@ -35,7 +39,8 @@ async def get_language(id: int, db: AsyncSession = Depends(get_async_session)):
 
 
 @language_router.post("/", response_model=LanguageRead, status_code=status.HTTP_201_CREATED)
-async def create_language(language_data: LanguageBase, db: AsyncSession = Depends(get_async_session)):
+async def create_language(language_data: LanguageBase, db: AsyncSession = Depends(get_async_session),
+                          user: User = Depends(current_admin_user)):
     new_language = Language(**language_data.model_dump())
     db.add(new_language)
     await db.commit()
@@ -44,7 +49,8 @@ async def create_language(language_data: LanguageBase, db: AsyncSession = Depend
 
 
 @language_router.patch("/{id}", response_model=LanguageRead, status_code=status.HTTP_200_OK)
-async def update_language(id: int, language_data: LanguageUpdate, db: AsyncSession = Depends(get_async_session)):
+async def update_language(id: int, language_data: LanguageUpdate, db: AsyncSession = Depends(get_async_session),
+                          user: User = Depends(current_admin_user)):
     result = await db.execute(select(Language).where(Language.id == id))
     language = result.scalar_one_or_none()
     if language is None:
@@ -58,7 +64,8 @@ async def update_language(id: int, language_data: LanguageUpdate, db: AsyncSessi
 
 
 @language_router.delete("/{id}", status_code=status.HTTP_200_OK)
-async def destroy_language(id: int, db: AsyncSession = Depends(get_async_session)):
+async def destroy_language(id: int, db: AsyncSession = Depends(get_async_session),
+                           user: User = Depends(current_admin_user)):
     result = await db.execute(select(Language).where(Language.id == id))
     language = result.scalar_one_or_none()
 
@@ -86,7 +93,8 @@ async def get_level(id: int, db: AsyncSession = Depends(get_async_session)):
 
 
 @level_router.post("/", response_model=LevelRead, status_code=status.HTTP_201_CREATED)
-async def create_level(level_data: LevelBase, db: AsyncSession = Depends(get_async_session)):
+async def create_level(level_data: LevelBase, db: AsyncSession = Depends(get_async_session),
+                       user: User = Depends(current_admin_user)):
     new_level = Level(**level_data.model_dump())
     db.add(new_level)
     await db.commit()
@@ -95,7 +103,8 @@ async def create_level(level_data: LevelBase, db: AsyncSession = Depends(get_asy
 
 
 @level_router.patch("/{id}", response_model=LevelRead, status_code=status.HTTP_200_OK)
-async def update_level(id: int, level_data: LevelUpdate, db: AsyncSession = Depends(get_async_session)):
+async def update_level(id: int, level_data: LevelUpdate, db: AsyncSession = Depends(get_async_session),
+                       user: User = Depends(current_admin_user)):
     result = await db.execute(select(Level).where(Level.id == id))
     level = result.scalar_one_or_none()
     if level is None:
@@ -110,7 +119,8 @@ async def update_level(id: int, level_data: LevelUpdate, db: AsyncSession = Depe
 
 
 @level_router.delete("/{id}", status_code=status.HTTP_200_OK)
-async def destroy_level(id: int, db: AsyncSession = Depends(get_async_session)):
+async def destroy_level(id: int, db: AsyncSession = Depends(get_async_session),
+                        user: User = Depends(current_admin_user)):
     result = await db.execute(select(Level).where(Level.id == id))
     level = result.scalar_one_or_none()
     if level is None:
@@ -143,7 +153,8 @@ async def get_course(id: int, db: AsyncSession = Depends(get_async_session)):
 
 
 @course_router.post("/", response_model=CourseRead, status_code=status.HTTP_201_CREATED)
-async def create_course(course_data: CourseBase, db: AsyncSession = Depends(get_async_session)):
+async def create_course(course_data: CourseBase, db: AsyncSession = Depends(get_async_session),
+                        user: User = Depends(current_admin_user)):
     language_res = await db.execute(select(Language).where(Language.name == course_data.language_name))
     language_obj = language_res.scalar_one_or_none()
     if not language_obj:
@@ -176,7 +187,8 @@ async def create_course(course_data: CourseBase, db: AsyncSession = Depends(get_
 
 
 @course_router.patch("/{id}", response_model=CourseRead, status_code=status.HTTP_200_OK)
-async def update_course(id: int, course_data: CourseUpdate, db: AsyncSession = Depends(get_async_session)):
+async def update_course(id: int, course_data: CourseUpdate, db: AsyncSession = Depends(get_async_session),
+                        user: User = Depends(current_admin_user)):
     result = await db.execute(select(Course).where(Course.id == id))
     course = result.scalar_one_or_none()
     if course is None:
@@ -201,7 +213,8 @@ async def update_course(id: int, course_data: CourseUpdate, db: AsyncSession = D
 
 
 @course_router.delete("/{id}", status_code=status.HTTP_200_OK)
-async def destroy_course(id: int, db: AsyncSession = Depends(get_async_session)):
+async def destroy_course(id: int, db: AsyncSession = Depends(get_async_session),
+                         user: User = Depends(current_admin_user)):
     result = await db.execute(select(Course).where(Course.id == id))
     course = result.scalar_one_or_none()
     if course is None:

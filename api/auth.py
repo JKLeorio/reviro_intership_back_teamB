@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.permissions import require_roles
 from models.user import User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, UserCreate, UserRegister, UserResponse, UserUpdate, AdminRegister
+from schemas.user import AdminCreate, UserCreate, UserRegister, UserResponse, AdminRegister
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from fastapi import Request
 from typing import Optional
@@ -57,6 +57,7 @@ current_user = fastapi_users.current_user()
 current_super_user = fastapi_users.current_user(superuser=True)
 current_admin_user = require_roles("admin")
 current_teacher_user = require_roles("teacher", "admin")
+current_student_user = require_roles("student", "teacher", "student")
 current_student_user = require_roles("student", "teacher", "admin")
 optional_current_user = fastapi_users.current_user(optional=True)
 
