@@ -44,8 +44,6 @@ class UserPartialUpdate(BaseModel):
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
 
-      
-      
 
 class StudentResponse(BaseModel):
     id: int
@@ -78,6 +76,7 @@ class SuperAdminCreate(UserCreate):
 
 class SuperAdminUpdate(schemas.BaseUserUpdate):
     pass
+
 
 class AdminRegister(UserRegister):
     role: Literal[Role.ADMIN] = Role.ADMIN
