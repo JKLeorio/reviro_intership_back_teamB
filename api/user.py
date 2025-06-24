@@ -32,8 +32,8 @@ from schemas.user import (
 
 user_router = routing.APIRouter()
 
-teacher_router = routing.APIRouter()
-student_router = routing.APIRouter()
+# teacher_router = routing.APIRouter()
+# student_router = routing.APIRouter()
 
 
 class UserFilter(Filter):
@@ -43,41 +43,41 @@ class UserFilter(Filter):
         model = User
 
 
-@teacher_router.get(
-        '/',
-        response_model=TeacherResponse,
-        status_code=status.HTTP_200_OK
-        )
-async def teacher_list(
-    session: AsyncSession = Depends(get_async_session)
-):
-    pass
+# @teacher_router.get(
+#         '/',
+#         response_model=TeacherResponse,
+#         status_code=status.HTTP_200_OK
+#         )
+# async def teacher_list(
+#     session: AsyncSession = Depends(get_async_session)
+# ):
+#     pass
 
 
-@teacher_router.get(
-        '/profile',
-        response_model=TeacherProfile,
-        status_code=status.HTTP_200_OK
-)
-async def teacher_profile(
-    user: User = Depends(current_teacher_user),
-    session: AsyncSession = Depends(get_async_session)
-):
-    pass
+# @teacher_router.get(
+#         '/profile',
+#         response_model=TeacherProfile,
+#         status_code=status.HTTP_200_OK
+# )
+# async def teacher_profile(
+#     user: User = Depends(current_teacher_user),
+#     session: AsyncSession = Depends(get_async_session)
+# ):
+#     pass
 
 
 
-@student_router.get(
-        '/profile',
-        response_model=StudentProfile,
-        status_code=status.HTTP_200_OK
-)
-async def student_profile(
-    user: User = Depends(current_only_student_user),
-    session: AsyncSession = Depends(get_async_session)
-):
-    # payments = await session.execute(select(Payment))
-    pass
+# @student_router.get(
+#         '/profile',
+#         response_model=StudentProfile,
+#         status_code=status.HTTP_200_OK
+# )
+# async def student_profile(
+#     user: User = Depends(current_only_student_user),
+#     session: AsyncSession = Depends(get_async_session)
+# ):
+#     payments = await session.execute(select(Payment))
+#     pass
 
 
 @user_router.get(
