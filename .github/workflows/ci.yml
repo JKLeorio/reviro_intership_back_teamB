@@ -11,6 +11,7 @@ env:
   POSTGRES_PASSWORD: postgres
   POSTGRES_HOST: localhost
   POSTGRES_PORT: 5430
+  SECRET: reviro
 
 jobs:
   test:
