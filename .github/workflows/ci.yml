@@ -5,6 +5,13 @@ on:
   pull_request:
     branches: [master]
 
+env:
+  POSTGRES_DB: eureka
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_HOST: localhost
+  POSTGRES_PORT: 5430
+
 jobs:
   test:
     runs-on: ubuntu-latest
