@@ -26,4 +26,4 @@ jobs:
           uv sync --locked --no-install-project
 
       - name: Run tests
-        run: ENV PATH="$UV_PROJECT_ENVIRONMENT/bin:$PATH" && pytest tests/
+        run: uv run pytest
