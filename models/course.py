@@ -8,7 +8,7 @@ from db.dbbase import Base
 if TYPE_CHECKING:
     from models.group import Group
     from models.enrollment import Enrollment
-    #from models.payment import Subscription
+    from models.payment import Subscription
 
 
 idpk = Annotated[int, mapped_column(primary_key=True, autoincrement=True)]
@@ -66,4 +66,4 @@ class Course(Base):
 
 
     #Временно cascade
-    #subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="course", cascade="all, delete-ophan")
+    subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="course", cascade="all, delete-orphan")
