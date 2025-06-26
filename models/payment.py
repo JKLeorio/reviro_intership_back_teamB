@@ -28,7 +28,7 @@ class Subscription(Base):
     course: Mapped["Course"] = relationship(back_populates="subscriptions")
     owner: Mapped["User"] = relationship(back_populates="subscriptions")
 
-    payments: Mapped[list["Payment"]] = relationship(back_populates="subcription")
+    payments: Mapped[list["Payment"]] = relationship(back_populates="subscription")
 
 
 
@@ -48,8 +48,8 @@ class Payment(Base):
         Enum(Currency, name="currency", create_type=False), default=Currency.KGS)
 
     #Временно cascade
-    subcription_id: Mapped[int] = mapped_column(ForeignKey("subscriptions.id", ondelete="CASCADE"))
-    subcription: Mapped["Subscription"] = relationship(back_populates="payments")
+    subscription_id: Mapped[int] = mapped_column(ForeignKey("subscriptions.id", ondelete="CASCADE"))
+    subscription: Mapped["Subscription"] = relationship(back_populates="payments")
     
     # group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"))
     # group: Mapped["Group"] = relationship(back_populates="payments")

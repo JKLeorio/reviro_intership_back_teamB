@@ -41,16 +41,16 @@ class SubscriptionFilter(Filter):
     status__in: Optional[List[SubscriptionStatus]] = None
     created_at__gte: Optional[datetime] = None
     created_at__lte: Optional[datetime] = None
-    owner: Optional[int] = None
+    owner_id: Optional[int] = None
 
     class Constants(Filter.Constants):
         model = Subscription
 
 class PaymentFilter(Filter):
-    payment_method: Optional[List[PaymentMethod]] = None
-    payment_status: Optional[List[PaymentStatus]] = None
-    currency: Optional[List[Currency]] = None
-    owner: Optional[int] = None
+    payment_method__in: Optional[List[PaymentMethod]] = None
+    payment_status__in: Optional[List[PaymentStatus]] = None
+    currency__in: Optional[List[Currency]] = None
+    owner_id: Optional[int] = None
 
     class Constants(Filter.Constants):
         model = Payment
@@ -110,8 +110,8 @@ async def subscription_detail(
             selectinload(Subscription.course)
             ]
         )
-    if not subscription:
-        HTTPException(
+    if subscription is None:
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Subscription not found'}
             )
@@ -130,7 +130,7 @@ async def subscription_create(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
-    validate_related_fields(
+    await validate_related_fields(
         {
             Course : subscription_create.course_id,
             User : subscription_create.owner_id
@@ -167,15 +167,16 @@ async def subscription_create(
             ]
         )
     if not subscription:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Subscription not found'}
             )
     
-    validate_related_fields(
+    await validate_related_fields(
         {
             Course, subscription_update.course_id
-        }
+        },
+        session=session
     )
 
     for key, value in subscription_update.model_dump().items():
@@ -207,15 +208,16 @@ async def subscription_create(
             ]
         )
     if not subscription:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Subscription not found'}
             )
     
-    validate_related_fields(
+    await validate_related_fields(
         {
             Course, subscription_update.course_id
-        }
+        },
+        session=session
     )
 
     for key, value in subscription_update.model_dump(exclude_unset=True).items():
@@ -245,12 +247,13 @@ async def subscription_create(
             ]
         )
     if not subscription:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Subscription not found'}
             )
     
     await session.delete(subscription)
+    await session.commit()
     
     return
 
@@ -267,7 +270,10 @@ async def payment_list(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
-    query = select(Payment).offset(offset=offset).limit(limit=limit)
+    query = select(Payment).offset(offset=offset).limit(limit=limit).options(
+        selectinload(Payment.owner),
+        selectinload(Payment.subscription)
+    )
     query = payment_filter.filter(query=query)
     payments = await session.execute(query)
 
@@ -290,11 +296,11 @@ async def payment_detail(
         payment_id, 
         options=[
             selectinload(Payment.owner),
-            selectinload(Payment.subcription)
+            selectinload(Payment.subscription)
             ]
         )
     if not payment:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
             )
@@ -307,12 +313,12 @@ async def payment_detail(
     response_model=PaymentResponse,
     status_code=status.HTTP_200_OK
 )
-async def payment_detail(
+async def payment_create(
     payment_create: PaymentCreate,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
-    validate_related_fields(
+    await validate_related_fields(
         {
             User: payment_create.owner_id,
             Subscription: payment_create.subscription_id
@@ -348,11 +354,11 @@ async def payment_update(
         payment_id, 
         options=[
             selectinload(Payment.owner),
-            selectinload(Payment.subcription)
+            selectinload(Payment.subscription)
             ]
         )
     if not payment:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
             )
@@ -381,11 +387,11 @@ async def payment_partial_update(
         payment_id, 
         options=[
             selectinload(Payment.owner),
-            selectinload(Payment.subcription)
+            selectinload(Payment.subscription)
             ]
         )
     if not payment:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
             )
@@ -411,13 +417,15 @@ async def payment_delete(
         payment_id, 
         options=[
             selectinload(Payment.owner),
-            selectinload(Payment.subcription)
+            selectinload(Payment.subscription)
             ]
         )
     if not payment:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
             )
         
     await session.delete(payment)
+    await session.commit()
+    return
