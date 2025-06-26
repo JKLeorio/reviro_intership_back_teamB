@@ -13,8 +13,8 @@ class SubscriptionBase(BaseModel):
     id: uuid.UUID
     created_at: datetime
     status: SubscriptionStatus
-    course: int
-    owner: int
+    course_id: int
+    owner_id: int
 
     class Config:
         from_attributes = True
@@ -70,7 +70,7 @@ class PaymentCreate(BaseModel):
     payment_method: PaymentMethod = PaymentMethod.CASH
     payment_status: PaymentStatus = PaymentStatus.PENDING
     currency: Currency = Currency.KGS
-    subscription_id: int
+    subscription_id: uuid.UUID
     owner_id: int
 
 
