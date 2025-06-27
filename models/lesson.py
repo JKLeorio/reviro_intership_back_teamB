@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, time, datetime
 from typing import List, TYPE_CHECKING
 from db.dbbase import Base
-from sqlalchemy import String, DateTime, ForeignKey, Text
+from sqlalchemy import String, DateTime, ForeignKey, Text, Date, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from utils.date_time_utils import get_current_time
@@ -15,7 +15,7 @@ class Classroom(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
     lessons: Mapped[List["Lesson"]] = relationship(back_populates='classroom', cascade="all, delete-orphan")
@@ -28,8 +28,14 @@ class Lesson(Base):
 
     name: Mapped[str] = mapped_column(String, nullable=False)
 
-    lesson_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    lesson_end: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    description: Mapped[str] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
+
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+
+    lesson_start: Mapped[time] = mapped_column(Time, nullable=False)
+    lesson_end: Mapped[time] = mapped_column(Time, nullable=False)
 
     teacher_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
 
@@ -41,6 +47,14 @@ class Lesson(Base):
 
     homeworks: Mapped[List["Homework"]] = relationship(back_populates='lesson', cascade='all, delete-orphan')
 
+    @property
+    def group_name(self) -> str | None:
+        return self.group.name if self.group else None
+
+    @property
+    def classroom_name(self) -> str | None:
+        return self.classroom.name if self.group else None
+
 
 class Homework(Base):
 
@@ -49,7 +63,8 @@ class Homework(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
-    description: Mapped[str] = mapped_column(Text)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    deadline: Mapped[date] = mapped_column(Date, nullable=False)
 
     lesson_id: Mapped[int] = mapped_column(ForeignKey('lessons.id'))
     lesson: Mapped["Lesson"] = relationship(back_populates='homeworks')
