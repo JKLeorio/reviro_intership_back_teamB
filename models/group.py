@@ -39,4 +39,5 @@ class Group(Base):
 
     students: Mapped[List["User"]] = relationship(secondary="student_group_association_table",
                                                      back_populates="groups_joined")
-    payments: Mapped[list["Payment"]] = relationship(back_populates="group")
+
+    payments: Mapped[List["Payment"]] = relationship(back_populates="group")
