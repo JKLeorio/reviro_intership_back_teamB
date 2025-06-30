@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Literal, Optional, TYPE_CHECKING
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from fastapi_users import schemas
 
 from db.types import Gender, Role
@@ -18,8 +18,8 @@ class UserBase(BaseModel):
     phone_number: Optional[str] = None
     role: Role
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -64,11 +64,14 @@ class StudentResponse(BaseModel):
 class TeacherResponse(UserResponse):
     role: str
 
+
 class StudentTeacherRegister(UserRegister):
     role: Literal[Role.STUDENT, Role.TEACHER] = Role.STUDENT
 
+
 class StudentTeacherCreate(UserCreate):
     role: Role = Role.STUDENT
+
 
 class AdminCreate(UserCreate):
     role: Role = Role.ADMIN

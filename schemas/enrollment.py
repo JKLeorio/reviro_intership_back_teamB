@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 from models.enrollment import Enrollment
 from schemas.course import CourseRead
+
 
 class EnrollmentResponse(BaseModel):
     id: int
@@ -16,8 +17,7 @@ class EnrollmentResponse(BaseModel):
     course_id: int
     user_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EnrollmentCreate(BaseModel):
