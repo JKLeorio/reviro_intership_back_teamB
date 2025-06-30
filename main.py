@@ -6,6 +6,7 @@ from api.auth import authRouter
 from api.course import course_router, language_router, level_router
 from api.lesson import lesson_router, classroom_router, homework_router
 from api.group import group_students_router, group_router
+from api.user import user_router
 
 app = FastAPI()
 
@@ -19,6 +20,7 @@ app.include_router(group_students_router, prefix="/group-students", tags=["group
 app.include_router(lesson_router, prefix='', tags=['Lessons'])
 app.include_router(classroom_router, prefix='/classrooms', tags=['Classrooms'])
 app.include_router(homework_router, prefix='', tags=['Homeworks'])
+app.include_router(user_router, prefix='/user', tags=['Users'])
 
 
 if __name__ == "__main__":
