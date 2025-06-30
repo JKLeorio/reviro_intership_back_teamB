@@ -8,6 +8,18 @@ from db.types import Gender, Role
 if TYPE_CHECKING:
     from schemas.group import GroupBase
     from schemas.lesson import HomeworkBase, LessonBase
+    
+#Используется для связей других схем
+class UserBase(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: str
+    phone_number: Optional[str] = None
+    role: Role
+
+    class Config:
+        from_attributes = True
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -16,17 +28,10 @@ class UserCreate(schemas.BaseUserCreate):
     email: EmailStr = Field(..., max_length=254)
     # role: Role = Field(Role.STUDENT)
 
-
-class UserResponse(BaseModel):
-    id: int
-    first_name: str
-    last_name: str
-    email: str
-    phone_number: Optional[str] = None
-    role: Role
-    class Config:
-        from_attributes = True
-
+#Тут уже может быть вывод с вложенными полями,
+#которые уже будут использовать чужие base модели
+class UserResponse(UserBase):
+    pass
 
 class UserRegister(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
