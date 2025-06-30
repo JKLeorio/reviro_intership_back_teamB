@@ -42,16 +42,15 @@ class UserRegister(BaseModel):
         description="User role, default is 'STUDENT'")
     phone_number: Optional[str] = None
 
-class UserUpdate(BaseModel):
+class UserUpdate(schemas.CreateUpdateDictModel):
     first_name: str
     last_name: str
     phone_number: str
 
 
-class UserPartialUpdate(BaseModel):
+class UserPartialUpdate(schemas.CreateUpdateDictModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
     last_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    email: Optional[EmailStr] = Field(None, max_length=254)
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
 
@@ -93,21 +92,21 @@ class AdminRegister(UserRegister):
     role: Literal[Role.ADMIN] = Role.ADMIN
     
 
-class UserProfile(UserResponse):
-    pass
+# class UserProfile(UserResponse):
+#     pass
 
 
-class StudentProfile(UserProfile):
-
-    
-    groups_joined: List['GroupBase']
-    # homeworks: List['HomeworkBase']
-    lessons: List['LessonBase']
-
-class TeacherProfile(UserProfile):
+# class StudentProfile(UserProfile):
 
     
-    groups_taught: List['GroupBase']
-    # homeworks: List['HomeworkBase']
-    # payments: List['PaymentBase']
-    lessons: List['LessonBase']
+#     groups_joined: List['GroupBase']
+#     # homeworks: List['HomeworkBase']
+#     lessons: List['LessonBase']
+
+# class TeacherProfile(UserProfile):
+
+    
+#     groups_taught: List['GroupBase']
+#     # homeworks: List['HomeworkBase']
+#     # payments: List['PaymentBase']
+#     lessons: List['LessonBase']

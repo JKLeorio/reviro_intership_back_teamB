@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_filter.contrib.sqlalchemy import Filter
 from fastapi_filter.base.filter import FilterDepends
 
+from fastapi_users.exceptions import UserNotExists
+
 from db.database import get_async_session
 from api.auth import (
     UserManager,
@@ -18,22 +20,26 @@ from api.auth import (
     current_only_student_user,
     get_user_manager
     )
+
+
 from db.types import Role
+from models.lesson import Lesson
 from models.payment import Payment
-from models.user import User
+from models.user import User, student_group_association_table
 from models.group import Group
 from schemas.user import (
-    StudentProfile,
-    TeacherProfile,
-    TeacherResponse,
+    # StudentProfile,
+    # TeacherProfile,
+    # TeacherResponse,
+    UserPartialUpdate,
     UserResponse,
     UserUpdate
 )
 
 user_router = routing.APIRouter()
 
-teacher_router = routing.APIRouter()
-student_router = routing.APIRouter()
+# teacher_router = routing.APIRouter()
+# student_router = routing.APIRouter()
 
 
 class UserFilter(Filter):
@@ -54,30 +60,41 @@ class UserFilter(Filter):
 #     pass
 
 
-@teacher_router.get(
-        '/profile',
-        response_model=TeacherProfile,
-        status_code=status.HTTP_200_OK
-)
-async def teacher_profile(
-    user: User = Depends(current_teacher_user),
-    session: AsyncSession = Depends(get_async_session)
-):
-    pass
+# @teacher_router.get(
+#         '/profile',
+#         response_model=TeacherProfile,
+#         status_code=status.HTTP_200_OK
+# )
+# async def teacher_profile(
+#     user: User = Depends(current_teacher_user),
+#     session: AsyncSession = Depends(get_async_session)
+# ):
+#     await session.refresh(user, attribute_names=['groups_taught'])
+#     query = select(
+#         Lesson
+#         ).join(
+#             Group
+#             ).join(
+#                 student_group_association_table,
+#                 Group.id == student_group_association_table.c.group_id
+#                 ).where(
+#                     student_group_association_table.c.user_id == user.id
+#                     )
+    
+#     lessons = session.execute(query)
 
 
 
-@student_router.get(
-        '/profile',
-        response_model=StudentProfile,
-        status_code=status.HTTP_200_OK
-)
-async def student_profile(
-    user: User = Depends(current_only_student_user),
-    session: AsyncSession = Depends(get_async_session)
-):
-    payments = await session.execute(select(Payment))
-    pass
+# @student_router.get(
+#         '/profile',
+#         response_model=StudentProfile,
+#         status_code=status.HTTP_200_OK
+# )
+# async def student_profile(
+#     user: User = Depends(current_only_student_user),
+#     session: AsyncSession = Depends(get_async_session)
+# ):
+#     pass
 
 
 @user_router.get(
@@ -134,9 +151,38 @@ async def user_update(
     user_manager: UserManager = Depends(get_user_manager),
     user: User = Depends(current_admin_user)
 ):
-    old_user = await user_manager.get(user_id)
+    try:
+        old_user = await user_manager.get(user_id)
+    except UserNotExists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail={"detail": "User doesn't exist"}
+            )
+    
     updated_user = await user_manager.update(user_update=user_update, user=old_user)
     return updated_user
+
+@user_router.patch(
+        '/{user_id}',
+        response_model=UserResponse,
+        status_code=status.HTTP_200_OK
+)
+async def user_update(
+    user_id: int,
+    user_update: UserPartialUpdate,
+    user_manager: UserManager = Depends(get_user_manager),
+    user: User = Depends(current_admin_user)
+):
+    try:
+        old_user = await user_manager.get(user_id)
+    except UserNotExists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail={"detail": "User doesn't exist"}
+            )
+    updated_user = await user_manager.update(user_update=user_update, user=old_user)
+    return updated_user
+
 
 
 @user_router.delete(
@@ -148,6 +194,13 @@ async def user_delete(
     user_manager: UserManager = Depends(get_user_manager),
     user: User = Depends(current_admin_user)
 ):
-    user_to_delete = await user_manager.get(user_id)
+    
+    try:
+        user_to_delete = await user_manager.get(user_id)
+    except UserNotExists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail={"detail": "User doesn't exist"}
+            )
     await user_manager.delete(user=user_to_delete)
     return
