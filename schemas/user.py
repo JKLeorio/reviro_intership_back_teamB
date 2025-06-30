@@ -1,10 +1,13 @@
 from datetime import datetime
-from typing import List, Literal, Optional
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, TYPE_CHECKING
 from pydantic import BaseModel, EmailStr, Field
 from fastapi_users import schemas
 
 from db.types import Gender, Role
+
+if TYPE_CHECKING:
+    from schemas.group import GroupBase
+    from schemas.lesson import HomeworkBase, LessonBase
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -34,7 +37,9 @@ class UserRegister(BaseModel):
         description="User role, default is 'STUDENT'")
     phone_number: Optional[str] = None
 
-class UserUpdate(UserCreate):
+class UserUpdate(BaseModel):
+    first_name: str
+    last_name: str
     phone_number: str
 
 
@@ -89,14 +94,15 @@ class UserProfile(UserResponse):
 
 class StudentProfile(UserProfile):
 
-    from schemas.group import GroupResponse
     
-    groups_joined: List[GroupResponse]
-    # homeworks: List[HomeworkResponse]
+    groups_joined: List['GroupBase']
+    # homeworks: List['HomeworkBase']
+    lessons: List['LessonBase']
 
 class TeacherProfile(UserProfile):
 
-    from schemas.group import GroupResponse
     
-    groups_taught: List[GroupResponse]
-    # homeworks: List[HomeworkResponse]
+    groups_taught: List['GroupBase']
+    # homeworks: List['HomeworkBase']
+    # payments: List['PaymentBase']
+    lessons: List['LessonBase']
