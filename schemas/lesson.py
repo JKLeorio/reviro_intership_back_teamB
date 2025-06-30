@@ -1,6 +1,6 @@
 from datetime import datetime, time, date
 from typing import Optional, List
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, ConfigDict
 
 
 def validate_time_func(values: dict):
@@ -22,8 +22,7 @@ class ClassroomRead(BaseModel):
     name: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClassroomUpdate(BaseModel):
@@ -47,8 +46,7 @@ class LessonRead(BaseModel):
     classroom_name: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LessonShort(BaseModel):
@@ -89,8 +87,7 @@ class LessonUpdate(BaseModel):
     def validate_time(cls, values):
         return validate_time_func(values)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HomeworkRead(BaseModel):
