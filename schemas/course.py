@@ -59,6 +59,13 @@ class CourseBase(BaseModel):
     level_code: str
     description: str | None = None
 
+class CourseRelationBase(BaseModel):
+    id: int
+    name: str
+    price: float
+    language_id: int
+    level_id: int
+    description: str | None = None
 
 class CourseUpdate(BaseModel):
     name: Optional[str] = None

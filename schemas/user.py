@@ -5,15 +5,8 @@ from fastapi_users import schemas
 
 from db.types import Gender, Role
 
-
-class UserCreate(schemas.BaseUserCreate):
-    first_name: str = Field(..., min_length=1, max_length=50)
-    last_name: str = Field(..., min_length=1, max_length=50)
-    email: EmailStr = Field(..., max_length=254)
-    # role: Role = Field(Role.STUDENT)
-
-
-class UserResponse(BaseModel):
+#Используется для связей других схем
+class UserBase(BaseModel):
     id: int
     first_name: str
     last_name: str
@@ -23,6 +16,18 @@ class UserResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+
+class UserCreate(schemas.BaseUserCreate):
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: str = Field(..., min_length=1, max_length=50)
+    email: EmailStr = Field(..., max_length=254)
+    # role: Role = Field(Role.STUDENT)
+
+#Тут уже может быть вывод с вложенными полями,
+#которые уже будут использовать чужие base модели
+class UserResponse(UserBase):
+    pass
 
 class UserRegister(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
