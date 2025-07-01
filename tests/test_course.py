@@ -17,14 +17,14 @@ async def test_get_languages(client):
 
 @pytest.mark.anyio
 async def test_get_language(client):
-    create_resp = await client.post("/languages/", json={"name": "French"})
+    create_resp = await client.post("/languages/", json={"name": "Chinese"})
     assert create_resp.status_code == 201
 
     response = await client.get(f"/languages/2")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 2
-    assert data["name"] == "French"
+    assert data["name"] == "Chinese"
 
 
 @pytest.mark.anyio
