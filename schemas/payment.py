@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 import uuid
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from db.types import Currency, PaymentMethod, PaymentStatus, SubscriptionStatus
 from models.payment import Payment, Subscription
@@ -16,8 +16,7 @@ class SubscriptionBase(BaseModel):
     course_id: int
     owner_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
     
 
 class SubscriptionResponse(SubscriptionBase):
@@ -55,8 +54,7 @@ class PaymentBase(BaseModel):
     subscription: int
     owner: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaymentResponse(PaymentBase):
