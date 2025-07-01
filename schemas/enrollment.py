@@ -28,10 +28,21 @@ class EnrollmentCreate(BaseModel):
     course_id: int
 
 
+
 class EnrollmentUpdate(BaseModel):
-    first_name: Optional[str]
-    last_name: Optional[str]
-    email: Optional[EmailStr]
-    phone_number: Optional[str]
-    # course_id: Optional[int]
-    # user_id: Optional[int]
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone_number: str
+    course_id: int
+    user_id: Optional[int] = None
+
+
+
+class EnrollmentPartialUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+    course_id: Optional[int] = None
+    user_id: Optional[int] = None
