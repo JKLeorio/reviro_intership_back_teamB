@@ -34,7 +34,7 @@ group_students_router = routing.APIRouter()
 
 
 @group_students_router.get(
-        '/list',
+        '/',
         response_model=List[GroupStudentResponse],
         status_code=status.HTTP_200_OK,
 )
@@ -172,7 +172,7 @@ async def group_students_partial_update(
 
 
 
-@group_router.get("/list", response_model=List[GroupResponse], status_code=status.HTTP_200_OK)
+@group_router.get("/", response_model=List[GroupResponse], status_code=status.HTTP_200_OK)
 async def group_list(
     limit: int = 10,
     offset: int = 0,
@@ -237,7 +237,7 @@ async def group_create(
 
 
 @group_router.put(
-        "/{grout_id}/",
+        "/{group_id}",
         response_model=GroupResponse,
         status_code=status.HTTP_200_OK
         )
@@ -262,7 +262,7 @@ async def group_update(
 
 
 @group_router.patch(
-        "/{group_id}/partial-update",
+        "/{group_id}",
         response_model=GroupResponse,
         status_code=status.HTTP_200_OK
         )
