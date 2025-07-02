@@ -8,7 +8,7 @@ from models.course import Course, Language, Level
 
 
 LEVEL_DATA = {
-    'code': 'B1',
+    'code': 'B3',
     'description': 'Big Chungus'
 }
 
@@ -63,6 +63,7 @@ async def test_set_up(course_factory, level_factory, language_factory):
 @pytest.mark.anyio
 async def test_create_enrollment(client):
     response = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
+    print(response.json())
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     dict_comparator(ENROLLMENT_CREATE, data)
@@ -126,3 +127,55 @@ async def test_enrollment_delete(client):
         f'/enrollment/{enrollment_current.json().get('id', 0)}'
     )
     assert response_detail.status_code == status.HTTP_404_NOT_FOUND
+
+
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_enrollment_list_permission(client):
+    response = await client.get('/enrollment/')
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_enrollment_update_permission(client):
+    enrollment_create_resp = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
+    assert enrollment_create_resp.status_code == status.HTTP_201_CREATED
+    enrollment_id = enrollment_create_resp.json()['id']
+    response = await client.put(f'/enrollment/{enrollment_id}', json=ENROLLMENT_UPDATE)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_enrollment_part_update_permission(client):
+    enrollment_create_resp = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
+    assert enrollment_create_resp.status_code == status.HTTP_201_CREATED
+    enrollment_id = enrollment_create_resp.json()['id']
+    response = await client.patch(
+        f'/enrollment/{enrollment_id}', 
+        json=ENROLLMENT_PARTIAL_UPDATE
+        )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_enrollment_delete_permission(client):
+    enrollment_create_resp = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
+    assert enrollment_create_resp.status_code == status.HTTP_201_CREATED
+    enrollment_id = enrollment_create_resp.json()['id']
+    response = await client.delete(f'/enrollment/{enrollment_id}')
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.anyio
+async def test_enrollment_wrong_id(client):
+    url = f'/enrollment/{9999}'
+    response_detail = await client.get(url)
+    assert response_detail.status_code == status.HTTP_404_NOT_FOUND
+    response_update = await client.put(url, json=ENROLLMENT_UPDATE)
+    assert response_update.status_code == status.HTTP_404_NOT_FOUND
+    response_partial_update = await client.patch(url, json=ENROLLMENT_PARTIAL_UPDATE)
+    assert response_partial_update.status_code == status.HTTP_404_NOT_FOUND
