@@ -82,7 +82,7 @@ async def test_enrollment_list(client):
 async def test_enrollment_detail(client):
     enrollment_current = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
     assert enrollment_current.status_code == status.HTTP_201_CREATED
-    response = await client.get(f'/enrollment/{enrollment_current.json().get('id', 0)}')
+    response = await client.get(f"/enrollment/{enrollment_current.json().get('id', 0)}")
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     dict_comparator(ENROLLMENT_CREATE, data)
@@ -94,7 +94,7 @@ async def test_enrollment_update(client):
     enrollment_current = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
     assert enrollment_current.status_code == status.HTTP_201_CREATED
     response = await client.put(
-        f'/enrollment/{enrollment_current.json().get('id', 0)}', 
+        f"/enrollment/{enrollment_current.json().get('id', 0)}",
         json=ENROLLMENT_UPDATE)
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -108,7 +108,7 @@ async def test_enrollment_partial_update(client):
     enrollment_current = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
     assert enrollment_current.status_code == status.HTTP_201_CREATED
     response = await client.patch(
-        f'/enrollment/{enrollment_current.json().get('id', 0)}',
+        f"/enrollment/{enrollment_current.json().get('id', 0)}",
         json=ENROLLMENT_PARTIAL_UPDATE)
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -120,11 +120,11 @@ async def test_enrollment_delete(client):
     enrollment_current = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
     assert enrollment_current.status_code == status.HTTP_201_CREATED
     response = await client.delete(
-        f'/enrollment/{enrollment_current.json().get('id', 0)}'
+        f"/enrollment/{enrollment_current.json().get('id', 0)}"
     )
     assert response.status_code == status.HTTP_204_NO_CONTENT
     response_detail = await client.delete(
-        f'/enrollment/{enrollment_current.json().get('id', 0)}'
+        f"/enrollment/{enrollment_current.json().get('id', 0)}"
     )
     assert response_detail.status_code == status.HTTP_404_NOT_FOUND
 
