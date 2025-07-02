@@ -23,7 +23,8 @@ TestingSessionMaker = async_sessionmaker(test_engine, class_=AsyncSession, expir
 
 
 pytest_plugins = [
-    "tests.fixtures.course_fixtures"
+    "tests.fixtures.course_fixtures",
+    "tests.fixtures.user_fixtures"
 ]
 
 
@@ -68,7 +69,7 @@ def override_session_dependency(session: AsyncSession):
 
 @pytest.fixture
 
-async def client(override_session_dependency):
+async def client(override_session_dependency) -> AsyncGenerator[AsyncClient, None]:
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         yield client
