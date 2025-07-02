@@ -59,13 +59,6 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-@pytest.fixture(scope="session", autouse=True)
-def override_admin_dependency():
-    async def get_override_admin():
-        return User(id=1, email="admin@gmail.com", role=Role.ADMIN, is_active=True, is_superuser=True)
-    app.dependency_overrides[current_admin_user] = get_override_admin
-    app.dependency_overrides[current_user] = get_override_admin
-
 @pytest.fixture(scope="function")
 def override_session_dependency(session: AsyncSession):
     async def override_get_async_session():
