@@ -12,7 +12,7 @@ def require_roles(*roles : str):
     
     async def check_roles(user : User = Depends(current_user)):
         if user.role not in roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"detail" : "you don't have enough permissions"})
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have enough permissions")
         return user
     return check_roles
     

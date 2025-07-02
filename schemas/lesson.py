@@ -111,3 +111,41 @@ class HomeworkUpdate(BaseModel):
     description: Optional[str] = None
     deadline: Optional[date] = None
     lesson_id: Optional[int] = None
+
+
+class HomeworkSubmissionRead(BaseModel):
+    id: int
+    homework_id: int
+    student_id: int
+    file_path: Optional[str] = None
+    content: Optional[str] = None
+    submitted_at: date
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HomeworkSubmissionCreate(BaseModel):
+    content: Optional[str] = None
+
+
+class HomeworkSubmissionUpdate(HomeworkSubmissionCreate):
+    pass
+
+
+class HomeworkReviewCreate(BaseModel):
+    submission_id: int
+    comment: Optional[str] = None
+
+
+class HomeworkReviewRead(BaseModel):
+    id: int
+    submission_id: int
+    teacher_id: int
+    comment: Optional[str] = None
+    reviewed_at: date
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HomeworkReviewUpdate(HomeworkReviewCreate):
+    pass

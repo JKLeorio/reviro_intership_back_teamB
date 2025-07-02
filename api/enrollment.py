@@ -2,7 +2,7 @@ from typing import List
 from fastapi import Depends, routing, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from api.auth import  current_admin_user, optional_current_user, current_user
+from api.auth import current_admin_user, optional_current_user, current_user
 
 from db.database import get_async_session
 from db.types import Role
