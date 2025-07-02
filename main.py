@@ -1,5 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
+from sqladmin import Admin
+
+from db.database import engine
 
 from api.enrollment import enrollment_router
 from api.auth import authRouter
@@ -8,7 +11,13 @@ from api.lesson import lesson_router, classroom_router, homework_router, homewor
 from api.group import group_students_router, group_router
 from api.payment import payment_router, subscription_router
 
+from admin.user import UserAdmin
+
 app = FastAPI()
+admin = Admin(app, engine)
+
+admin.add_view(UserAdmin)
+
 
 app.include_router(authRouter, prefix="/auth", tags=["Auth"])
 app.include_router(enrollment_router, prefix="/enrollment", tags=["Enrollments"])

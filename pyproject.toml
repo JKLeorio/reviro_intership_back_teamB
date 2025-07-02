@@ -16,6 +16,7 @@ dependencies = [
     "pytest>=8.4.1",
     "python-decouple>=3.8",
     "setuptools>=80.9.0",
+    "sqladmin[full]>=0.21.0",
     "sqlalchemy>=2.0.41",
     "uvicorn>=0.34.3",
 ]
