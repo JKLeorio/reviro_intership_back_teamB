@@ -34,7 +34,7 @@ async def test_get_language(client):
     data = response.json()
 
     assert data["id"] == lang_id
-    assert data["name"] == "French"
+    assert data["name"] == "Chinese"
 
 
 
