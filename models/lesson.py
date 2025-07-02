@@ -68,3 +68,33 @@ class Homework(Base):
 
     lesson_id: Mapped[int] = mapped_column(ForeignKey('lessons.id'))
     lesson: Mapped["Lesson"] = relationship(back_populates='homeworks')
+
+    submissions: Mapped[List["HomeworkSubmission"]] = relationship('HomeworkSubmission', back_populates='homework',
+                                                                   cascade='all, delete-orphan')
+
+
+class HomeworkSubmission(Base):
+    __tablename__ = 'homework_submissions'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    homework_id: Mapped[int] = mapped_column(ForeignKey('homeworks.id'))
+    student_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    file_path: Mapped[str] = mapped_column(String, nullable=True)
+    content: Mapped[str] = mapped_column(String, nullable=True)
+    submitted_at: Mapped[date] = mapped_column(Date, default=datetime.utcnow)
+
+    homework = relationship('Homework', back_populates='submissions')
+    student = relationship('User')
+
+
+class HomeworkReview(Base):
+    __tablename__ = 'homework_reviews'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    submission_id: Mapped[int] = mapped_column(ForeignKey("homework_submissions.id"))
+    teacher_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[date] = mapped_column(Date, default=datetime.utcnow)
+
+    submission = relationship('HomeworkSubmission')
+    teacher = relationship('User')
