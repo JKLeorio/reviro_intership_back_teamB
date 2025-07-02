@@ -26,7 +26,6 @@ class SubscriptionResponse(SubscriptionBase):
     # payments: "PaymentBase"
 
 
-
 class SubscriptionCreate(BaseModel):
     status: SubscriptionStatus = SubscriptionStatus.PENDING
     course_id: int
@@ -41,7 +40,6 @@ class SubscriptionUpdate(BaseModel):
 class SubscriptionPartialUpdate(BaseModel):
     status: Optional[SubscriptionStatus] = None
     course_id: Optional[int] = None
-
 
 
 class PaymentBase(BaseModel):
@@ -61,7 +59,6 @@ class PaymentResponse(PaymentBase):
     subscription: SubscriptionBase
     owner: UserBase
     
-
 
 class PaymentCreate(BaseModel):
     amount: float
