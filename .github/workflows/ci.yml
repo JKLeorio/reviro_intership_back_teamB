@@ -15,22 +15,20 @@ env:
   SECRET: reviro
   TEST_DB_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/eureka_test
 
+
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:11.6-alpine
         env:
-          POSTGRES_DB: eureka
-          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready 
+          --health-interval 10s --health-timeout 5s 
           --health-retries 5
 
     steps:
@@ -49,21 +47,8 @@ jobs:
         run: |
           uv sync --locked --no-install-project
 
-      - name: Wait for Postgres to be ready
-        run: |
-          sudo apt-get install -y postgresql-client
-          for i in {1..30}; do
-            if pg_isready -h postgres -p 5432; then
-              echo "Postgres ready"
-              break
-            fi
-            echo "Waiting for Postgres ($i)..."
-            sleep 2
-            if [ "$i" -eq 3 ]; then
-              echo "Postgres failed to start"
-              exit 1
-            fi
-          done
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Create test database
         run: |
