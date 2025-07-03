@@ -1,3 +1,11 @@
+name: CI
+
+on:
+  push:
+    branches: [master, staging]
+  pull_request:
+    branches: [master, staging]
+
 env:
   POSTGRES_DB: eureka
   POSTGRES_USER: postgres
