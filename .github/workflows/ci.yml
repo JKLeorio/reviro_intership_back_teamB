@@ -15,21 +15,19 @@ env:
   SECRET: reviro
   TEST_DB_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/eureka_test
 
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:11.6-alpine
+        image: postgres:latest
         env:
           POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eureka
         ports:
           - 5432:5432
-        options: --health-cmd pg_isready 
-          --health-interval 10s --health-timeout 5s 
-          --health-retries 5
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
       - name: Checkout code
@@ -53,7 +51,7 @@ jobs:
       - name: Wait for Postgres to be ready
         run: |
           for i in {1..30}; do
-            if pg_isready -h postgres -p 5432; then
+            if pg_isready -h postgres -p 5432 -U postgres; then
               echo "Postgres ready"
               break
             fi
@@ -64,8 +62,6 @@ jobs:
               exit 1
             fi
           done
-          
-            done
 
       - name: Create test database
         run: |
