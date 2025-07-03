@@ -11,9 +11,9 @@ env:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
   POSTGRES_HOST: postgres
-  POSTGRES_PORT: 5430
+  POSTGRES_PORT: 5432
   SECRET: reviro
-  TEST_DB_URL: postgresql+asyncpg://postgres:postgres@postgres:5430/eureka_test
+  TEST_DB_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/eureka_test
 
 jobs:
   test:
@@ -53,7 +53,7 @@ jobs:
         run: |
           sudo apt-get install -y postgresql-client
           for i in {1..30}; do
-            if pg_isready -h postgres -p 5430; then
+            if pg_isready -h postgres -p 5432; then
               echo "Postgres ready"
               break
             fi
@@ -67,7 +67,7 @@ jobs:
 
       - name: Create test database
         run: |
-          psql -U postgres -h postgres -p 5430 -c 'CREATE DATABASE eureka_test;'
+          psql -U postgres -h postgres -p 5432 -c 'CREATE DATABASE eureka_test;'
 
       - name: Run tests
         run: uv run pytest
