@@ -42,6 +42,7 @@ class LessonRead(BaseModel):
     lesson_end: time
     teacher_id: int
     group_id: int
+    classroom_id: int
     group_name: Optional[str] = None
     classroom_name: Optional[str] = None
     created_at: datetime
@@ -95,6 +96,7 @@ class HomeworkRead(BaseModel):
     created_at: datetime
     deadline: date
     description: str
+    lesson_id: int
 
 
 class HomeworkBase(BaseModel):

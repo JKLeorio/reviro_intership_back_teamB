@@ -228,7 +228,7 @@ async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_as
     return homework
 
 
-@homework_router.post("/{lesson_id}/homework", response_model=HomeworkRead, status_code=status.HTTP_201_CREATED)
+@homework_router.post("/lesson/{lesson_id}/homework", response_model=HomeworkRead, status_code=status.HTTP_201_CREATED)
 async def create_homework(lesson_id: int, data: HomeworkCreate,
                           db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
