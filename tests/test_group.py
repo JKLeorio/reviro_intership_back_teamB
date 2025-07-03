@@ -210,3 +210,62 @@ async def test_group_student_partial_update(client):
     buff = {**GROUP_STUDENT_PARTIAL_UPDATE}
     buff.pop('students')
     dict_comparator({**GROUP_CREATE, **buff}, data)
+
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_group_student_list_permission(client):
+    response = await client.get(
+        group_student_url
+        )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_group_student_detail_permission(client):
+    response = await client.get(
+        group_student_url+'1'
+        )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_group_student_partial_update_permission(client):
+    response = await client.patch(
+        group_student_url+'0', 
+        json=GROUP_STUDENT_PARTIAL_UPDATE
+        )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_group_student_update_permission(client):
+    response = await client.put(
+        group_student_url+'0', 
+        json=GROUP_STUDENT_UPDATE
+        )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_group_create_permission(client):
+    response = await client.post(group_url, json=GROUP_CREATE)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_group_update_permission(client):
+    response = await client.put(group_url+'0', json=GROUP_UPDATE)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_group_partial_update_permission(client):
+    response = await client.patch(group_url+'0', json=GROUP_PARTIAL_UPDATE)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_group_delete_permission(client):
+    response = await client.delete(group_url+'0')
+    assert response.status_code == status.HTTP_403_FORBIDDEN
