@@ -142,12 +142,12 @@ async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSessi
 
     group = await get_group_or_404(group_id, db)
 
-    if group.teacher_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
+    # if group.teacher_id != user.id:
+    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
 
     new_lesson_data = lesson_data.model_dump()
     new_lesson_data['group_id'] = group_id
-    new_lesson_data['teacher_id'] = user.id
+    # new_lesson_data['teacher_id'] = user.id
     new_lesson = Lesson(**new_lesson_data)
     db.add(new_lesson)
     await db.commit()
