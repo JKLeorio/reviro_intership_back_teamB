@@ -10,7 +10,7 @@ env:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
   POSTGRES_HOST: localhost
-  POSTGRES_PORT: 5432
+  POSTGRES_PORT: 5430
   SECRET: reviro
 
   TEST_DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5430/eureka_test
