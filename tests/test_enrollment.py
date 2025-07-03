@@ -63,7 +63,6 @@ async def test_set_up(course_factory, level_factory, language_factory):
 @pytest.mark.anyio
 async def test_create_enrollment(client):
     response = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
-    print(response.json())
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     dict_comparator(ENROLLMENT_CREATE, data)
@@ -75,7 +74,7 @@ async def test_enrollment_list(client):
     response = await client.get('/enrollment/')
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    isinstance(data, list)
+    assert isinstance(data, list)
 
 
 @pytest.mark.anyio
