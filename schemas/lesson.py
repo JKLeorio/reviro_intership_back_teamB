@@ -61,7 +61,7 @@ class LessonBase(BaseModel):
     day: date
     lesson_start: time
     lesson_end: time
-    # teacher_id: int
+    teacher_id: int
     # group_id: int
     classroom_id: int
 
