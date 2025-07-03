@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_async_session
 from api.auth import (
+    optional_current_user,
     current_user,
     current_student_user,
     current_teacher_user,
@@ -83,7 +84,7 @@ async def group_students_update(
     group_id: int,
     group_update: GroupStudentUpdate,
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_teacher_user)
+    user: User = Depends(current_admin_user)
 ):
     group = await session.get(Group, group_id, options=[
         selectinload(Group.students),
@@ -131,7 +132,7 @@ async def group_students_partial_update(
     group_id: int,
     group_update: GroupStundentPartialUpdate,
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_teacher_user)
+    user: User = Depends(current_admin_user)
 ):
     group = await session.get(Group, group_id, options=[
         selectinload(Group.students),
@@ -176,7 +177,7 @@ async def group_students_partial_update(
 async def group_list(
     limit: int = 10,
     offset: int = 0,
-    user: User = Depends(current_teacher_user),
+    user: User = Depends(optional_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     query = select(Group).options(selectinload(Group.teacher)).offset(offset=offset).limit(limit=limit)
@@ -191,7 +192,7 @@ async def group_list(
         )
 async def group_detail(
     group_id: int,
-    user: User = Depends(current_teacher_user),
+    user: User = Depends(optional_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     # query = select(student_group_association_table).where(
