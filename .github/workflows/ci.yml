@@ -50,10 +50,10 @@ jobs:
         run: |
           uv sync --locked --no-install-project
 
-      - name: Create test database
-        run: |
-          sudo apt-get install -y postgresql-client
-          psql -U postgres -h localhost -p 5430 -c 'CREATE DATABASE eureka_test;'
+#      - name: Create test database
+#        run: |
+#          sudo apt-get install -y postgresql-client
+#          psql -U postgres -h localhost -p 5430 -c 'CREATE DATABASE eureka_test;'
 
       - name: Run tests
         run: uv run pytest
