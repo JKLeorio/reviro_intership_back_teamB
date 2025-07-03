@@ -18,6 +18,7 @@ class GroupResponse(BaseModel):
     course_id: int
     # course: CourseRead
     teacher: TeacherResponse
+    teacher_id: int
 
     model_config = ConfigDict(from_attributes=True)
 
