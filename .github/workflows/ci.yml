@@ -53,3 +53,4 @@ jobs:
           TEST_DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5430/eureka_test
           SECRET: reviro
         run: uv run pytest
+
