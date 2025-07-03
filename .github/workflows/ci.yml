@@ -10,10 +10,9 @@ env:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
   POSTGRES_HOST: localhost
-  POSTGRES_PORT: 5430
+  POSTGRES_PORT: 5432
   SECRET: reviro
-
-  TEST_DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5430/eureka_test
+  TEST_DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/eureka_test
 
 jobs:
   test:
@@ -33,7 +32,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -50,11 +48,14 @@ jobs:
         run: |
           uv sync --locked --no-install-project
 
-#      - name: Create test database
-#        run: |
-#          sudo apt-get install -y postgresql-client
-#          psql -U postgres -h localhost -p 5430 -c 'CREATE DATABASE eureka_test;'
+      - name: Create test database
+        run: |
+          sudo apt-get install -y postgresql-client
+          until pg_isready -h localhost -p 5432; do
+            echo "Waiting for PostgreSQL to be ready..."
+            sleep 2
+          done
+          psql -U postgres -h localhost -p 5432 -c 'CREATE DATABASE eureka_test;'
 
       - name: Run tests
         run: uv run pytest
-
