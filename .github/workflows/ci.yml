@@ -10,7 +10,7 @@ env:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
   POSTGRES_HOST: localhost
-  POSTGRES_PORT: 5430
+  POSTGRES_PORT: 5432
   SECRET: reviro
 
 jobs:
@@ -50,5 +50,6 @@ jobs:
 
       - name: Run tests
         env:
-
+          TEST_DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5430/eureka_test
+          SECRET: reviro
         run: uv run pytest
