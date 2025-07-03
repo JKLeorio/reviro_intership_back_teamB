@@ -1,18 +1,11 @@
-name: CI
-on:
-  push:
-    branches: [master, staging]
-  pull_request:
-    branches: [master, staging]
-
 env:
   POSTGRES_DB: eureka
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
-  POSTGRES_HOST: localhost
+  POSTGRES_HOST: postgres
   POSTGRES_PORT: 5432
   SECRET: reviro
-  TEST_DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/eureka_test
+  TEST_DB_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/eureka_test
 
 jobs:
   test:
@@ -48,14 +41,27 @@ jobs:
         run: |
           uv sync --locked --no-install-project
 
-      - name: Create test database
+      - name: Wait for Postgres to be ready
         run: |
           sudo apt-get install -y postgresql-client
-          until pg_isready -h localhost -p 5432; do
-            echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if pg_isready -h postgres -p 5432; then
+              echo "Postgres ready"
+              break
+            fi
+            echo "Waiting for Postgres ($i)..."
             sleep 2
+            if [ "$i" -eq 3 ]; then
+              echo "Postgres failed to start"
+              exit 1
+            fi
           done
-          psql -U postgres -h localhost -p 5432 -c 'CREATE DATABASE eureka_test;'
+
+      - name: Create test database
+        run: |
+          psql -U postgres -h postgres -p 5432 -c 'CREATE DATABASE eureka_test;'
 
       - name: Run tests
         run: uv run pytest
+        env:
+          DATABASE_URL: ${{ env.TEST_DB_URL }}
