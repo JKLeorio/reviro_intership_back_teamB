@@ -1,5 +1,7 @@
+import os
+import datetime
 from typing import List
-from fastapi import Depends, APIRouter, HTTPException, status, Query
+from fastapi import Depends, APIRouter, HTTPException, status, Query, Form, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -8,12 +10,12 @@ from api.auth import current_student_user, current_teacher_user, current_admin_u
 from api.group import group_router
 
 from models.group import Group
-from models.lesson import Lesson, Classroom, Homework
+from models.lesson import Lesson, Classroom, Homework, HomeworkSubmission
 from models.user import User
 
 from schemas.lesson import (
     LessonRead, LessonCreate, LessonUpdate, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
-    HomeworkCreate, HomeworkUpdate
+    HomeworkCreate, HomeworkUpdate, HomeworkSubmissionCreate, HomeworkSubmissionRead
 )
 
 from db.database import get_async_session
@@ -21,6 +23,11 @@ from db.database import get_async_session
 lesson_router = APIRouter()
 classroom_router = APIRouter()
 homework_router = APIRouter()
+homework_submission_router = APIRouter()
+
+
+MEDIA_FOLDER = "media/homework_submissions"
+os.makedirs(MEDIA_FOLDER, exist_ok=True)
 
 
 # crud for classroom
@@ -135,12 +142,12 @@ async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSessi
 
     group = await get_group_or_404(group_id, db)
 
-    if group.teacher_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
+    # if group.teacher_id != user.id:
+    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
 
     new_lesson_data = lesson_data.model_dump()
     new_lesson_data['group_id'] = group_id
-    new_lesson_data['teacher_id'] = user.id
+    # new_lesson_data['teacher_id'] = user.id
     new_lesson = Lesson(**new_lesson_data)
     db.add(new_lesson)
     await db.commit()
@@ -211,7 +218,7 @@ async def my_homeworks(db: AsyncSession = Depends(get_async_session),
     return homeworks
 
 
-@homework_router.get("/homework/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
+@homework_router.get("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
 async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_async_session),
                              user: User = Depends(current_teacher_user)):
     result = await db.execute(select(Homework).where(Homework.id == homework_id))
@@ -221,7 +228,7 @@ async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_as
     return homework
 
 
-@homework_router.post("/{lesson_id}/homework", response_model=HomeworkRead, status_code=status.HTTP_201_CREATED)
+@homework_router.post("/lesson/{lesson_id}/homework", response_model=HomeworkRead, status_code=status.HTTP_201_CREATED)
 async def create_homework(lesson_id: int, data: HomeworkCreate,
                           db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
@@ -276,3 +283,31 @@ async def destroy_homework(homework_id: int, db: AsyncSession = Depends(get_asyn
     await db.delete(homework)
     await db.commit()
     return {"detail": f"Homework with id {homework_id} has been deleted"}
+
+
+# @homework_submission_router.post('/', response_model=HomeworkSubmissionRead,
+#                                  status_code=status.HTTP_201_CREATED)
+# async def submit_homework(homework_id: int = Form(...), content: str = Form(None), file: UploadFile = File(None),
+#                           db: AsyncSession = Depends(get_async_session), user: User = Depends(current_student_user)):
+#     if not file and not content:
+#         raise HTTPException(status_code=400, detail="Either file or contend must be provided")
+#
+#     file_path = None
+#     if file:
+#         filename = f"{user.id}_{datetime.utcnow().isoformat()}_{file.filename}"
+#         file_path = os.path.join(MEDIA_FOLDER, filename)
+#         with open(file_path, "wb") as f_out:
+#             f_out.write(await file.read())
+#
+#     submission = HomeworkSubmission(
+#         homework_id=homework_id,
+#         student_id = user.id,
+#         file_path=file_path,
+#         content=content,
+#         submitted_at=datetime.utcnow().date
+#     )
+#
+#     db.add(submission)
+#     await db.commit()
+#     await db.refresh(submission)
+#     return submission
