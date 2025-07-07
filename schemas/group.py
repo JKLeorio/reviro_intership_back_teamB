@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from schemas.course import CourseRead
 from schemas.user import StudentResponse, TeacherResponse, UserResponse
@@ -30,6 +30,9 @@ class GroupResponse(BaseModel):
     course_id: int
     # course: CourseRead
     teacher: TeacherResponse
+    teacher_id: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GroupCreate(BaseModel):
