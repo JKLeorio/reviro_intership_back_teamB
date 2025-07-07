@@ -13,4 +13,5 @@ uv run alembic revision --autogenerate -m 'deployment schema'
 echo "Creating tables..."
 uv run alembic upgrade head
 
+
 uv run main.py
