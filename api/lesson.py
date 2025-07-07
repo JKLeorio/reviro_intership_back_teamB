@@ -46,6 +46,9 @@ def get_group_students(group):
 
 @classroom_router.get('/', response_model=List[ClassroomRead], status_code=status.HTTP_200_OK)
 async def get_all_classrooms(db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
+    '''
+    Returns a list of classrooms
+    '''
     result = await db.execute(select(Classroom))
     return result.scalars().all()
 
@@ -53,6 +56,9 @@ async def get_all_classrooms(db: AsyncSession = Depends(get_async_session), user
 @classroom_router.get('/{classroom_id}', response_model=ClassroomRead, status_code=status.HTTP_200_OK)
 async def get_classroom(classroom_id: int, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_teacher_user)):
+    '''
+    Returns detailed classroom data by classroom id
+    '''
     classroom = await get_classroom_or_404(classroom_id, db)
     return classroom
 
@@ -60,6 +66,9 @@ async def get_classroom(classroom_id: int, db: AsyncSession = Depends(get_async_
 @classroom_router.post('/', response_model=ClassroomRead, status_code=status.HTTP_201_CREATED)
 async def create_classroom(data: ClassroomCreate, db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_admin_user)):
+    '''
+    Creates a classroom from the submitted data
+    '''
     data = data.model_dump()
     new_classroom = Classroom(**data)
     db.add(new_classroom)
@@ -72,6 +81,9 @@ async def create_classroom(data: ClassroomCreate, db: AsyncSession = Depends(get
 async def update_classroom(classroom_id: int, data: ClassroomUpdate,
                            db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_admin_user)):
+    '''
+    Updates a classroom by classroom id from the submitted data
+    '''
     classroom = await get_classroom_or_404(classroom_id, db)
     data = data.model_dump(exclude_unset=True)
     for key, value in data.items():
@@ -85,6 +97,9 @@ async def update_classroom(classroom_id: int, data: ClassroomUpdate,
 @classroom_router.delete('/{classroom_id}', status_code=status.HTTP_200_OK)
 async def destroy_classroom(classroom_id: int, db: AsyncSession = Depends(get_async_session),
                             user: User = Depends(current_admin_user)):
+    '''
+    Delete classroom by classroom id
+    '''
     classroom = await get_classroom_or_404(classroom_id, db)
     await db.delete(classroom)
     await db.commit()
@@ -105,7 +120,9 @@ async def get_lessons_by_groups(group_id: int,
                                 offset: int = Query(0, ge=0, description="Offset for pagination"),
                                 db: AsyncSession = Depends(get_async_session),
                                 user: User = Depends(current_student_user)):
-
+    '''
+    Returns list of lessons by group id
+    '''
     group = await get_group_or_404(group_id, db)
     students_ids = [student.id for student in group.students]
     if user.id != group.teacher_id and user.id not in students_ids and user.role != 'admin':
@@ -119,9 +136,11 @@ async def get_lessons_by_groups(group_id: int,
 
 
 @lesson_router.get('/lesson/{lesson_id}', response_model=LessonRead, status_code=status.HTTP_200_OK)
-async def get_lesson_by_group(lesson_id: int, db: AsyncSession = Depends(get_async_session),
+async def get_lesson(lesson_id: int, db: AsyncSession = Depends(get_async_session),
                               user: User = Depends(current_student_user)):
-
+    '''
+    Returns detailed classroom data by classroom id
+    '''
     lesson = await db.get(Lesson, lesson_id, options=[selectinload(Lesson.classroom), selectinload(Lesson.group)
                                                       .selectinload(Group.students)])
 
@@ -139,7 +158,9 @@ async def get_lesson_by_group(lesson_id: int, db: AsyncSession = Depends(get_asy
 @lesson_router.post('/group/{group_id}/new_lesson', response_model=LessonRead, status_code=status.HTTP_201_CREATED)
 async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_teacher_user)):
-
+    '''
+    Creates a lesson from the submitted data
+    '''
     group = await get_group_or_404(group_id, db)
 
     # if group.teacher_id != user.id:
@@ -161,7 +182,9 @@ async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSessi
 @lesson_router.patch('/lesson/{lesson_id}', response_model=LessonRead, status_code=status.HTTP_200_OK)
 async def update_lesson(lesson_data: LessonUpdate, lesson_id: int,
                         db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
-
+    '''
+    Updates a lesson by lesson id from the submitted data
+    '''
     lesson = await db.get(Lesson, lesson_id, options=[selectinload(Lesson.classroom)])
     if not lesson:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson doesn't exist")
@@ -184,6 +207,9 @@ async def update_lesson(lesson_data: LessonUpdate, lesson_id: int,
 @lesson_router.delete('/lesson/{lesson_id}', status_code=status.HTTP_200_OK)
 async def destroy_lesson(group_id: int, lesson_id: int, db: AsyncSession = Depends(get_async_session),
                          user: User = Depends(current_teacher_user)):
+    '''
+    Delete lesson by lesson id
+    '''
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
     if not lesson:
@@ -213,7 +239,9 @@ async def get_homeworks_for_user(user_id, db: AsyncSession):
 @homework_router.get("/my-homeworks", response_model=List[HomeworkRead], status_code=status.HTTP_200_OK)
 async def my_homeworks(db: AsyncSession = Depends(get_async_session),
                                     user: User = Depends(current_student_user)):
-
+    '''
+    Returns list of homeworks for the current user
+    '''
     homeworks = await get_homeworks_for_user(user.id, db)
     return homeworks
 
@@ -221,6 +249,9 @@ async def my_homeworks(db: AsyncSession = Depends(get_async_session),
 @homework_router.get("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
 async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_async_session),
                              user: User = Depends(current_teacher_user)):
+    '''
+    Returns detailed homework data by homework id
+    '''
     result = await db.execute(select(Homework).where(Homework.id == homework_id))
     homework = result.scalar_one_or_none()
     if not homework:
@@ -232,6 +263,9 @@ async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_as
 async def create_homework(lesson_id: int, data: HomeworkCreate,
                           db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
+    '''
+    Creates a homework from the submitted data
+    '''
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
     if not lesson:
@@ -251,6 +285,9 @@ async def create_homework(lesson_id: int, data: HomeworkCreate,
 @homework_router.patch("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
 async def update_homework(homework_id: int, data: HomeworkUpdate, db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
+    '''
+    Updates a homework by homework id from the submitted data
+    '''
     result = await db.execute(select(Homework).where(Homework.id == homework_id)
                               .options(selectinload(Homework.lesson)))
     homework = result.scalar_one_or_none()
@@ -272,6 +309,9 @@ async def update_homework(homework_id: int, data: HomeworkUpdate, db: AsyncSessi
 @homework_router.delete("/{homework_id}", status_code=status.HTTP_200_OK)
 async def destroy_homework(homework_id: int, db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_teacher_user)):
+    '''
+    Delete homework by homework id
+    '''
     result = await db.execute(select(Homework).where(Homework.id == homework_id)
                               .options(selectinload(Homework.lesson)))
     homework = result.scalar_one_or_none()
