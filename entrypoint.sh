@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+echo 'Setting up alembic directories...'
+mkdir -p alembic/versions
+
 echo 'Setting up fresh database schema...'
 uv run alembic stamp base
 
