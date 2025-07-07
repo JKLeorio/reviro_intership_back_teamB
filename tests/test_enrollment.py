@@ -78,6 +78,14 @@ async def test_enrollment_list(client):
 
 
 @pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_user_enrollments(client):
+    response = await client.get('/enrollment/my')
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(response.json(), list)
+
+
+@pytest.mark.anyio
 async def test_enrollment_detail(client):
     enrollment_current = await client.post('/enrollment/', json=ENROLLMENT_CREATE)
     assert enrollment_current.status_code == status.HTTP_201_CREATED
