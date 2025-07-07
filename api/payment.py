@@ -78,6 +78,10 @@ async def subscription_list(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Returns a list of subscriptions
+    you can use filters with query
+    '''
     query = select(Subscription).offset(
         offset=offset
         ).limit(
@@ -102,6 +106,9 @@ async def subscription_detail(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Returns detailed subscription data by subscription id
+    '''
     subscription = await session.get(
         Subscription, 
         subscription_uuid, 
@@ -130,6 +137,9 @@ async def subscription_create(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Creates a subscription from the submitted data
+    '''
     await validate_related_fields(
         {
             Course : subscription_create.course_id,
@@ -158,6 +168,9 @@ async def subscription_create(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Updates a subscription by subscription id from the submitted data
+    '''
     subscription = await session.get(
         Subscription, 
         subscription_uuid, 
@@ -199,6 +212,9 @@ async def subscription_create(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Partial updates a subscription by subscription id from the submitted data
+    '''
     subscription = await session.get(
         Subscription, 
         subscription_uuid, 
@@ -238,6 +254,9 @@ async def subscription_create(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Delete subscription by subscription id
+    '''
     subscription = await session.get(
         Subscription, 
         subscription_uuid, 
@@ -270,6 +289,10 @@ async def payment_list(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Returns a list of payments
+    you can use filters with query
+    '''    
     query = select(Payment).offset(offset=offset).limit(limit=limit).options(
         selectinload(Payment.owner),
         selectinload(Payment.subscription)
@@ -291,6 +314,9 @@ async def payment_detail(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Returns detailed payment data by payment id
+    '''
     payment = await session.get(
         Payment, 
         payment_id, 
@@ -318,6 +344,9 @@ async def payment_create(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Creates a payment from the submitted data
+    '''
     await validate_related_fields(
         {
             User: payment_create.owner_id,
@@ -349,6 +378,9 @@ async def payment_update(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Updates a payment by payment id from the submitted data
+    '''
     payment = await session.get(
         Payment, 
         payment_id, 
@@ -382,6 +414,9 @@ async def payment_partial_update(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Partial updates a payment by payment id from the submitted data
+    '''
     payment = await session.get(
         Payment, 
         payment_id, 
@@ -412,6 +447,9 @@ async def payment_delete(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Delete payment by payment id
+    '''
     payment = await session.get(
         Payment, 
         payment_id, 
