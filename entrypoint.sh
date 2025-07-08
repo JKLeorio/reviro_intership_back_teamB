@@ -5,7 +5,7 @@ echo 'Setting up alembic directories...'
 mkdir -p alembic/versions
 
 echo 'Setting up fresh database schema...'
-uv run alembic stamp base
+uv run alembic stamp head
 
 echo "Generating migrations from current database..."
 uv run alembic revision --autogenerate -m 'deployment schema'
