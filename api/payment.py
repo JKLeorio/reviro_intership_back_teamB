@@ -162,7 +162,7 @@ async def subscription_create(
     response_model=SubscriptionResponse,
     status_code=status.HTTP_200_OK
 )
-async def subscription_create(
+async def subscription_update(
     subscription_uuid: uuid.UUID,
     subscription_update: SubscriptionUpdate,
     session: AsyncSession = Depends(get_async_session),
@@ -206,7 +206,7 @@ async def subscription_create(
     response_model=SubscriptionResponse,
     status_code=status.HTTP_200_OK
 )
-async def subscription_create(
+async def subscription_partial_update(
     subscription_uuid: uuid.UUID,
     subscription_update: SubscriptionPartialUpdate,
     session: AsyncSession = Depends(get_async_session),
@@ -249,7 +249,7 @@ async def subscription_create(
     '/{subscription_uuid}',
     status_code=status.HTTP_204_NO_CONTENT
 )
-async def subscription_create(
+async def subscription_delete(
     subscription_uuid: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
