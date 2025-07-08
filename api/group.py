@@ -45,6 +45,9 @@ async def group_students_list(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user)
 ):
+    '''
+    Returns a list of group with students
+    '''
     query = select(Group).offset(offset=offset).limit(limit=limit).options(
         selectinload(Group.students),
         selectinload(Group.teacher)
@@ -63,6 +66,9 @@ async def group_students_detail(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user)
 ):
+    '''
+    Returns detailed group data with students by group id
+    '''
     group = await session.get(Group, group_id, options=[
         selectinload(Group.students),
         selectinload(Group.teacher)
@@ -86,6 +92,10 @@ async def group_students_update(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Updates group by group id from the submitted data with students fields
+    NOTE -> students fields must contains ids
+    '''
     group = await session.get(Group, group_id, options=[
         selectinload(Group.students),
         selectinload(Group.teacher)])
@@ -134,6 +144,10 @@ async def group_students_partial_update(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Partial update group by group id from the submitted data with students fields
+    NOTE -> students fields must contains ids
+    '''
     group = await session.get(Group, group_id, options=[
         selectinload(Group.students),
         selectinload(Group.teacher)])
@@ -180,6 +194,9 @@ async def group_list(
     user: User = Depends(optional_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    '''
+    Returns a list of groups
+    '''
     query = select(Group).options(selectinload(Group.teacher)).offset(offset=offset).limit(limit=limit)
     groups = await session.execute(query)
     return groups.scalars().all()
@@ -195,6 +212,9 @@ async def group_detail(
     user: User = Depends(optional_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    '''
+    Returns detailed group data by group id
+    '''
     # query = select(student_group_association_table).where(
     #     student_group_association_table.c.group_id == group_id
     # ).options(selectinload(Group.teacher))
@@ -230,6 +250,9 @@ async def group_create(
     user: User = Depends(current_admin_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    '''
+    Returns a list of groups
+    '''
     new_group = Group(**group_data.model_dump())
     session.add(new_group)
     await session.commit()
@@ -248,6 +271,9 @@ async def group_update(
     user: User = Depends(current_admin_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    '''
+    Updates a group by group id from the submitted data
+    '''
     groups = await session.execute(select(Group).where(Group.id == group_id))
     group = groups.scalar_one_or_none()
     if not group:
@@ -273,6 +299,9 @@ async def group_partial_update(
     user: User = Depends(current_admin_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    '''
+    Partial Updates a group by group id from the submitted data
+    '''
     groups = await session.execute(select(Group).where(Group.id == group_id))
     group = groups.scalar_one_or_none()
     if not group:
@@ -294,6 +323,9 @@ async def group_delete(
     user: User = Depends(current_admin_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    '''
+    Delete group by group id
+    '''
     group = await session.get(Group, group_id)
     await session.delete(group)
     await session.commit()
