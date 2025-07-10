@@ -37,12 +37,18 @@ USER_DATA = {
     'role': 'teacher'
 }
 
+current_time_full = get_current_time()
+current_date = current_time_full.date()
+current_time = current_time_full.time()
+week_start = current_time_full - timedelta(days=current_time_full.weekday())
+
+
 GROUP_DATA = {
     'name': 'group 1',
     # 'start_date': '2025-07-02',
     # 'end_date': '2025-08-02',
-    'start_date': date(year=2025, month=7, day=2),
-    'end_date': date(year=2025, month=8, day=2),
+    'start_date': current_date,
+    'end_date': current_date + timedelta(days=30),
     'is_active': False,
     'is_archived': False,
     'course_id': None,
@@ -58,7 +64,7 @@ LESSON_DATA = {
     # "day": "2025-07-06",
     # "lesson_start": "09:00", 
     # "lesson_end": "11:15", 
-    "day": date(year=2025, month=7, day=6),
+    "day": None,
     "lesson_start": time(hour=9, minute=0), 
     "lesson_end": time(hour=11, minute=15), 
     "teacher_id": None, 
@@ -100,8 +106,6 @@ async def test_set_up(
     LESSON_DATA['teacher_id'] = teacher_id
     LESSON_DATA['group_id'] = group_id
     LESSON_DATA['classroom_id'] = classroom_id
-    current_time = get_current_time()
-    week_start = current_time - timedelta(days=current_time.weekday())
     for day in range(7):
         LESSON_DATA['day'] = week_start + timedelta(days=day)
         lesson = await lesson_factory(LESSON_DATA)
@@ -120,3 +124,5 @@ async def test_set_up(
 async def test_shedule_global(client):
     response = await client.get('/shedule/')
     assert response.status_code == status.HTTP_200_OK
+
+#TO DO добавить проверку респонса для группы
