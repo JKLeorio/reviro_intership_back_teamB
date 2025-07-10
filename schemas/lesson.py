@@ -1,6 +1,6 @@
 from datetime import datetime, time, date
 from typing import Optional, List
-from pydantic import BaseModel, model_validator, ConfigDict
+from pydantic import BaseModel, model_validator, ConfigDict, HttpUrl
 
 
 def validate_time_func(values: dict):
@@ -37,6 +37,7 @@ class LessonRead(BaseModel):
     id: int
     name: str
     description: str
+    link: Optional[HttpUrl]
     day: date
     lesson_start: time
     lesson_end: time
@@ -58,6 +59,7 @@ class LessonShort(BaseModel):
 class LessonBase(BaseModel):
     name: str
     description: str
+    link: Optional[HttpUrl] = None
     day: date
     lesson_start: time
     lesson_end: time
@@ -77,6 +79,7 @@ class LessonUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     day: Optional[date] = None
+    link: Optional[HttpUrl] = None
     lesson_start: Optional[time] = None
     lesson_end: Optional[time] = None
     teacher_id: Optional[int] = None
