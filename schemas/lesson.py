@@ -1,6 +1,7 @@
 from datetime import datetime, time, date
 from typing import Optional, List
 from pydantic import BaseModel, model_validator, ConfigDict
+from fastapi import UploadFile, File
 
 
 def validate_time_func(values: dict):
@@ -47,6 +48,8 @@ class LessonRead(BaseModel):
     classroom_name: Optional[str] = None
     created_at: datetime
 
+    homework: Optional['HomeworkRead']
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -64,6 +67,7 @@ class LessonBase(BaseModel):
     teacher_id: int
     # group_id: int
     classroom_id: int
+
 
 
 class LessonCreate(LessonBase):
@@ -121,17 +125,13 @@ class HomeworkSubmissionRead(BaseModel):
     student_id: int
     file_path: Optional[str] = None
     content: Optional[str] = None
-    submitted_at: date
+    submitted_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class HomeworkSubmissionCreate(BaseModel):
+class HomeworkSubmissionUpdate(BaseModel):
     content: Optional[str] = None
-
-
-class HomeworkSubmissionUpdate(HomeworkSubmissionCreate):
-    pass
 
 
 class HomeworkReviewCreate(BaseModel):

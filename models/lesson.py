@@ -1,5 +1,5 @@
 from datetime import date, time, datetime
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Optional
 from db.dbbase import Base
 from sqlalchemy import String, DateTime, ForeignKey, Text, Date, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,7 +45,8 @@ class Lesson(Base):
     classroom_id: Mapped[int] = mapped_column(ForeignKey('classrooms.id'))
     classroom: Mapped["Classroom"] = relationship(back_populates='lessons')
 
-    homeworks: Mapped[List["Homework"]] = relationship(back_populates='lesson', cascade='all, delete-orphan')
+    homework: Mapped["Homework"] = relationship(back_populates='lesson', cascade='all, delete-orphan',
+                                                passive_deletes=True)
 
     @property
     def group_name(self) -> str | None:
@@ -66,8 +67,8 @@ class Homework(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     deadline: Mapped[date] = mapped_column(Date, nullable=False)
 
-    lesson_id: Mapped[int] = mapped_column(ForeignKey('lessons.id'))
-    lesson: Mapped["Lesson"] = relationship(back_populates='homeworks')
+    lesson_id: Mapped[int] = mapped_column(ForeignKey('lessons.id', ondelete='CASCADE'))
+    lesson: Mapped["Lesson"] = relationship(back_populates='homework')
 
     submissions: Mapped[List["HomeworkSubmission"]] = relationship('HomeworkSubmission', back_populates='homework',
                                                                    cascade='all, delete-orphan')
@@ -77,11 +78,11 @@ class HomeworkSubmission(Base):
     __tablename__ = 'homework_submissions'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    homework_id: Mapped[int] = mapped_column(ForeignKey('homeworks.id'))
+    homework_id: Mapped[int] = mapped_column(ForeignKey('homeworks.id', ondelete='CASCADE'))
     student_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
-    file_path: Mapped[str] = mapped_column(String, nullable=True)
-    content: Mapped[str] = mapped_column(String, nullable=True)
-    submitted_at: Mapped[date] = mapped_column(Date, default=datetime.utcnow)
+    file_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=get_current_time)
 
     homework = relationship('Homework', back_populates='submissions')
     student = relationship('User')
@@ -94,7 +95,7 @@ class HomeworkReview(Base):
     submission_id: Mapped[int] = mapped_column(ForeignKey("homework_submissions.id"))
     teacher_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     comment: Mapped[str] = mapped_column(Text, nullable=True)
-    reviewed_at: Mapped[date] = mapped_column(Date, default=datetime.utcnow)
+    reviewed_at: Mapped[date] = mapped_column(Date, default=get_current_time)
 
     submission = relationship('HomeworkSubmission')
     teacher = relationship('User')

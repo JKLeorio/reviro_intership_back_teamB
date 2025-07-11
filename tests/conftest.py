@@ -67,8 +67,8 @@ def override_session_dependency(session: AsyncSession):
 
     app.dependency_overrides[get_async_session] = override_get_async_session
 
-@pytest.fixture
 
+@pytest.fixture
 async def client(override_session_dependency) -> AsyncGenerator[AsyncClient, None]:
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
