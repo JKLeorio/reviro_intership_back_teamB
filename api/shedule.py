@@ -183,7 +183,7 @@ async def shedule_global(
 )
 async def shedule_user(
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_student_user)
+    user: User = Depends(current_teacher_user)
 ):
     '''
     Returns current user shedule for current week
@@ -201,7 +201,7 @@ async def shedule_user(
 async def shedule_by_user(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_teacher_user),
+    user: User = Depends(current_student_user),
 ):
     '''
     Returns user shedule by user id for current week
@@ -225,7 +225,7 @@ async def shedule_by_user(
 async def shedule_by_group(
     group_id: int,
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(optional_current_user)
+    user: User = Depends(current_teacher_user)
     ):
     '''
     get group shedule by group id for current week
