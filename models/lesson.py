@@ -76,6 +76,7 @@ class Homework(Base):
     lesson: Mapped["Lesson"] = relationship(back_populates='homework')
 
     submissions: Mapped[List["HomeworkSubmission"]] = relationship('HomeworkSubmission', back_populates='homework',
+                                                                   lazy="selectin",
                                                                    cascade='all, delete-orphan')
 
 
