@@ -18,12 +18,13 @@ SECRET = config('SECRET')
 
 authRouter = APIRouter()
 
+#lifetime временно равен 30 месяцам для тестировки
 bearer_transport = BearerTransport(tokenUrl="auth/login")
 auth_backend = AuthenticationBackend(
     name="jwt",
     transport=bearer_transport,
     get_strategy=lambda: JWTStrategy(
-        secret=SECRET, lifetime_seconds=3600 * 24 * 7),
+        secret=SECRET, lifetime_seconds=3600 * 24 * 30),
 )
 
 

@@ -75,3 +75,10 @@ class CourseUpdate(BaseModel):
     description: Optional[str] = None
     language_id: Optional[int] = None
     level_id: Optional[int] = None
+
+
+class ProfileCourse(BaseModel):
+    id: int
+    name: str
+    language_name: str
+    level_code: str
