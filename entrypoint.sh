@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
+set -e
 
-uv run alembic revision --autogenerate -m "project migrations"
-
+echo "Creating tables..."
 uv run alembic upgrade head
+
+echo "Creating superuser if not exists..."
+
+uv run manage.py createsuperuser --email "$SUPERUSER_EMAIL" --password "$SUPERUSER_PASSWORD"
 
 uv run main.py

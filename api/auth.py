@@ -63,9 +63,25 @@ optional_current_user = fastapi_users.current_user(optional=True)
 
 current_only_student_user = require_roles("student", "admin")
 
-authRouter = fastapi_users.get_auth_router(auth_backend)
+auth_router_full = fastapi_users.get_auth_router(auth_backend)
 get_user_manager_context = contextlib.asynccontextmanager(get_user_manager)
 
+authRouter = APIRouter()
+
+for route in auth_router_full.routes:
+    if route.path == "/login":
+        authRouter.add_api_route(
+            route.path,
+            route.endpoint,
+            methods=route.methods,
+            name=route.name,
+            description=
+            """
+            Get bearer auth token after authentication
+            NOTE -> The email field a user is used as the username when logging in.
+            """,
+            response_model=route.response_model,
+        )
 
 # @router.post("/register", response_model=UserResponse)
 # async def register(
