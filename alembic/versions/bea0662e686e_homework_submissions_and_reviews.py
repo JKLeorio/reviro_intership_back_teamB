@@ -73,7 +73,7 @@ def downgrade() -> None:
                existing_type=sa.DateTime(timezone=True),
                type_=postgresql.TIMESTAMP(),
                existing_nullable=False)
-    op.drop_column('payments', 'subscription_id')
+    # op.drop_column('payments', 'subscription_id')
     # op.drop_table('homework_reviews')
     # op.drop_table('homework_submissions')
     # op.drop_table('subscriptions')
