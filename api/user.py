@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from fastapi import routing, HTTPException, Depends, status
 
 from sqlalchemy import select
@@ -23,14 +23,16 @@ from api.auth import (
 
 
 from db.types import Role
+from models.course import Course
 from models.lesson import Lesson
 from models.payment import Payment
 from models.user import User, student_group_association_table
 from models.group import Group
+from schemas.course import ProfileCourse
 from schemas.user import (
-    # StudentProfile,
-    # TeacherProfile,
-    # TeacherResponse,
+    StudentProfile,
+    TeacherProfile,
+    UserBase,
     UserPartialUpdate,
     UserResponse,
     UserUpdate
@@ -38,8 +40,6 @@ from schemas.user import (
 
 user_router = routing.APIRouter()
 
-# teacher_router = routing.APIRouter()
-# student_router = routing.APIRouter()
 
 
 class UserFilter(Filter):
@@ -49,57 +49,96 @@ class UserFilter(Filter):
         model = User
 
 
-# @teacher_router.get(
-#         '/',
-#         response_model=TeacherResponse,
-#         status_code=status.HTTP_200_OK
-#         )
-# async def teacher_list(
-#     session: AsyncSession = Depends(get_async_session)
-# ):
-#     pass
 
+async def get_teacher_profile_data(user_id, session: AsyncSession):
+    user = await session.get(User, user_id)
+    course_query = select(
+        Course
+        ).options(
+            selectinload(Course.groups),
+            selectinload(Course.language),
+            selectinload(Course.level)
+        ).join(
+            Course.groups
+        ).where(
+            Group.is_archived.is_(False),
+            Group.teacher_id == user_id
+        ).distinct(Course.id)
+    result = await session.execute(course_query)
+    courses = result.scalars().all()
 
-# @teacher_router.get(
-#         '/profile',
-#         response_model=TeacherProfile,
-#         status_code=status.HTTP_200_OK
-# )
-# async def teacher_profile(
-#     user: User = Depends(current_teacher_user),
-#     session: AsyncSession = Depends(get_async_session)
-# ):
-#     await session.refresh(user, attribute_names=['groups_taught'])
-#     query = select(
-#         Lesson
-#         ).join(
-#             Group
-#             ).join(
-#                 student_group_association_table,
-#                 Group.id == student_group_association_table.c.group_id
-#                 ).where(
-#                     student_group_association_table.c.user_id == user.id
-#                     )
-    
-#     lessons = session.execute(query)
+    profile_response = TeacherProfile.model_validate(user)
+    profile_response.courses = [
+        ProfileCourse(
+            id=course.id, 
+            name=course.name,
+            language_name=course.language.name,
+            level_code=course.level.code
+            ) for course in courses
+        ]
+    return profile_response
 
+async def get_student_profile_data(user_id, session: AsyncSession):
+    user = await session.get(User, user_id)
+    course_query = select(
+        Course
+        ).options(
+            selectinload(Course.groups),
+            selectinload(Course.language),
+            selectinload(Course.level)
+        ).join(
+            Course.groups
+        ).where(
+            Group.is_archived.is_(False),
+            Group.students.any(User.id == user_id)
+        ).distinct(Course.id)
+    result = await session.execute(course_query)
+    courses = result.scalars().all()
 
-
-# @student_router.get(
-#         '/profile',
-#         response_model=StudentProfile,
-#         status_code=status.HTTP_200_OK
-# )
-# async def student_profile(
-#     user: User = Depends(current_only_student_user),
-#     session: AsyncSession = Depends(get_async_session)
-# ):
-#     pass
+    profile_response = StudentProfile.model_validate(user)
+    profile_response.courses = [
+        ProfileCourse(
+            id=course.id, 
+            name=course.name,
+            language_name=course.language.name,
+            level_code=course.level.code
+            ) for course in courses
+        ]
+    return profile_response
 
 
 @user_router.get(
+        '/profile',
+        response_model=Union[StudentProfile, TeacherProfile],
+        status_code=status.HTTP_200_OK
+)
+async def user_profile(
+    user: User = Depends(current_student_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    if user.role == Role.STUDENT:
+        return await get_student_profile_data(user.id, session)
+    elif user.role == Role.TEACHER:
+        return await get_teacher_profile_data(user.id, session)
+    elif user.role == Role.ADMIN:
+        #временно
+        return await get_teacher_profile_data(user.id, session)
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
+@user_router.get(
+    '/data', 
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK
+)
+async def user_data(
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)
+    ):
+    return user
+
+@user_router.get(
     '/', 
-    response_model=List[UserResponse],
+    response_model=List[UserBase],
     status_code=status.HTTP_200_OK
 )
 async def user_list(

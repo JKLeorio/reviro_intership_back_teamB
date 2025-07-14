@@ -3,13 +3,14 @@ from typing import List, Literal, Optional, TYPE_CHECKING
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from fastapi_users import schemas
 
-from db.types import Gender, Role
+from db.types import Role
+from schemas.course import ProfileCourse
 
 if TYPE_CHECKING:
     from schemas.group import GroupBase
     from schemas.lesson import HomeworkBase, LessonBase
     
-#Используется для связей других схем
+
 class UserBase(BaseModel):
     id: int
     first_name: str
@@ -28,8 +29,7 @@ class UserCreate(schemas.BaseUserCreate):
     email: EmailStr = Field(..., max_length=254)
     # role: Role = Field(Role.STUDENT)
 
-#Тут уже может быть вывод с вложенными полями,
-#которые уже будут использовать чужие base модели
+
 class UserResponse(UserBase):
     pass
 
@@ -93,23 +93,10 @@ class SuperAdminUpdate(schemas.BaseUserUpdate):
 
 class AdminRegister(UserRegister):
     role: Literal[Role.ADMIN] = Role.ADMIN
-    
-
-# class UserProfile(UserResponse):
-#     pass
 
 
-# class StudentProfile(UserProfile):
+class TeacherProfile(UserBase):
+    courses: list[ProfileCourse] = []
 
-    
-#     groups_joined: List['GroupBase']
-#     # homeworks: List['HomeworkBase']
-#     lessons: List['LessonBase']
-
-# class TeacherProfile(UserProfile):
-
-    
-#     groups_taught: List['GroupBase']
-#     # homeworks: List['HomeworkBase']
-#     # payments: List['PaymentBase']
-#     lessons: List['LessonBase']
+class StudentProfile(UserBase):
+    courses: list[ProfileCourse] = []
