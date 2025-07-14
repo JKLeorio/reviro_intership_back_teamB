@@ -79,6 +79,7 @@ SHEDULE_RESPONSE = {calendar.day_abbr[day_id].upper() : list()  for day_id in ra
 
 @pytest.mark.anyio
 async def test_set_up(
+    client,
     level_factory,
     classroom_factory,
     language_factory,
@@ -103,6 +104,12 @@ async def test_set_up(
     # GROUP_DATA['students'] = [student_id]
     GROUP_DATA['students'] = []
     group_id = await group_factory(GROUP_DATA)
+    response = await client.patch(
+        f"/group-students/{group_id}",
+        json={'students':[student_id]}
+        )
+    assert response.status_code == status.HTTP_200_OK
+    GROUP_DATA['students'] = [student_id]
     LESSON_DATA['teacher_id'] = teacher_id
     LESSON_DATA['group_id'] = group_id
     LESSON_DATA['classroom_id'] = classroom_id
@@ -110,6 +117,11 @@ async def test_set_up(
         LESSON_DATA['day'] = week_start + timedelta(days=day)
         lesson = await lesson_factory(LESSON_DATA)
         week_day = calendar.day_abbr[day].upper()
+        lesson = dict(lesson)
+        lesson['day'] = lesson['day'].isoformat()
+        lesson['lesson_start'] = lesson['lesson_start'].isoformat()
+        lesson['lesson_end'] = lesson['lesson_end'].isoformat()
+        lesson['link'] = str(lesson['link'])
         SHEDULE_RESPONSE[week_day].append(
             {
                 'group': {
@@ -119,10 +131,37 @@ async def test_set_up(
             }
         )
 
+
+def compare_shedule_with_result(response):
+    data = response.json()
+    for day_abbr in calendar.day_abbr:
+        week_day = data[day_abbr.upper()]
+        if week_day is not None:
+            for group_item in week_day:
+                group = group_item.get('group', None)
+                if group is not None:
+                    if group['id'] == LESSON_DATA['group_id']:
+                        dict_comparator(SHEDULE_RESPONSE[day_abbr.upper()][0]['group'], group)
+                        compare_lesson = SHEDULE_RESPONSE[day_abbr.upper()][0]['lessons'][0]
+                        lessons = group_item['lessons']
+                        for lesson in lessons:
+                            lesson_id = lesson.get('id', None)
+                            if lesson_id is not None:
+                                if lesson_id == compare_lesson['id']:
+                                    dict_comparator(compare_lesson, lesson)
+                                    break
+
 @pytest.mark.anyio
 @pytest.mark.role('student')
 async def test_shedule_global(client):
     response = await client.get('/shedule/')
     assert response.status_code == status.HTTP_200_OK
+    compare_shedule_with_result(response)
 
-#TO DO добавить проверку респонса для группы
+
+@pytest.mark.anyio
+@pytest.mark.role('teacher')
+async def test_shedule_by_group(client):
+    response = await client.get('/shedule/group/' + str(LESSON_DATA['group_id']))
+    assert response.status_code == status.HTTP_200_OK
+    compare_shedule_with_result(response)
