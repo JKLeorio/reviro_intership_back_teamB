@@ -4,7 +4,6 @@ build/
 wheels/
 
 alembic.ini
-alembic/
 
 media/
 
