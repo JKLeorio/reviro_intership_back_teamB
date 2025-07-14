@@ -48,7 +48,7 @@ class LessonRead(BaseModel):
     classroom_name: Optional[str] = None
     created_at: datetime
 
-    homework: Optional['HomeworkRead']
+    homework: Optional['HomeworkBase']
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -102,15 +102,20 @@ class HomeworkRead(BaseModel):
     description: str
     lesson_id: int
 
+    submissions: List["HomeworkSubmissionRead"] = []
+
 
 class HomeworkBase(BaseModel):
-
+    id: int
     deadline: date
     description: str
 
+    model_config = ConfigDict(from_attributes=True)
 
-class HomeworkCreate(HomeworkBase):
-    pass
+
+class HomeworkCreate(BaseModel):
+    deadline: date
+    description: str
 
 
 class HomeworkUpdate(BaseModel):
