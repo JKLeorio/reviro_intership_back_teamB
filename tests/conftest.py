@@ -24,7 +24,9 @@ TestingSessionMaker = async_sessionmaker(test_engine, class_=AsyncSession, expir
 
 pytest_plugins = [
     "tests.fixtures.course_fixtures",
-    "tests.fixtures.user_fixtures"
+    "tests.fixtures.user_fixtures",
+    "tests.fixtures.lesson_fixtures",
+    "tests.fixtures.group_fixtures"
 ]
 
 
