@@ -243,7 +243,7 @@ async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_as
     if not homework:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Homework not found for this lesson"
+            detail="Homework not found"
         )
     return homework
 
