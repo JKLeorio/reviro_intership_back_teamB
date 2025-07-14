@@ -6,6 +6,20 @@ from schemas.course import CourseRead
 from schemas.user import StudentResponse, TeacherResponse, UserResponse
 
 
+class GroupBase(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    start_date: date
+    end_date: date
+    is_active: bool
+    is_archived: bool
+    course_id: int
+    teacher_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class GroupResponse(BaseModel):
     id: int
     name: str

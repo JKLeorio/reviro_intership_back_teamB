@@ -1,6 +1,9 @@
 from datetime import date, time, datetime
 from typing import List, TYPE_CHECKING, Optional
+
+from pydantic import HttpUrl
 from db.dbbase import Base
+from db.types import HttpUrlType
 from sqlalchemy import String, DateTime, ForeignKey, Text, Date, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +32,8 @@ class Lesson(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
 
     description: Mapped[str] = mapped_column(Text)
+
+    link: Mapped[HttpUrl] = mapped_column(HttpUrlType, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 

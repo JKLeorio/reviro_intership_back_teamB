@@ -131,7 +131,8 @@ async def test_create_lesson(client):
     assert classroom_response.status_code == 201
     classroom_id = classroom_response.json()['id']
 
-    lesson_data = {"name": "To be", "description": "How to use verb to be", "day": "2025-07-06",
+    lesson_data = {"name": "To be", "description": "How to use verb to be",
+                   "link": "https://example.com/", "day": "2025-07-06",
                    "lesson_start": "09:00", "lesson_end": "11:15", "teacher_id": teacher_id, "group_id": group_id,
                    "classroom_id": classroom_id}
 
@@ -145,7 +146,8 @@ async def test_create_lesson(client):
 @pytest.mark.anyio
 @pytest.mark.role('teacher')
 async def test_create_lesson_by_teacher(client):
-    lesson_data = {"name": "To be", "description": "How to use verb to be", "day": "2025-07-06",
+    lesson_data = {"name": "To be", "description": "How to use verb to be",
+                   "link": "https://example.com/", "day": "2025-07-06",
                    "lesson_start": "09:00", "lesson_end": "11:15", "teacher_id": 1, "group_id": 1,
                    "classroom_id": 4}
 
@@ -191,10 +193,13 @@ async def test_update_lesson(client):
 @pytest.mark.role('teacher')
 async def test_update_lesson(client):
 
+
     response = await client.patch(f"/lessons/1", json={"description": "Am, are, is"})
+
 
     assert response.status_code == 200
     assert response.json()['description'] == "Am, are, is"
+    assert response.json()['link'] == "https://example.com/"
 
 
 @pytest.mark.anyio
