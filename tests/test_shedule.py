@@ -122,6 +122,8 @@ async def test_set_up(
         lesson['lesson_start'] = lesson['lesson_start'].isoformat()
         lesson['lesson_end'] = lesson['lesson_end'].isoformat()
         lesson['link'] = str(lesson['link'])
+        lesson['teacher'] = dict(lesson['teacher'])
+        lesson['classroom'] = dict(lesson['classroom'])
         SHEDULE_RESPONSE[week_day].append(
             {
                 'group': {

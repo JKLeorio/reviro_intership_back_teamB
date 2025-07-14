@@ -7,6 +7,7 @@ from db.types import HttpUrlType
 from sqlalchemy import String, DateTime, ForeignKey, Text, Date, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from models.user import User
 from utils.date_time_utils import get_current_time
 
 if TYPE_CHECKING:
@@ -49,6 +50,8 @@ class Lesson(Base):
 
     classroom_id: Mapped[int] = mapped_column(ForeignKey('classrooms.id'))
     classroom: Mapped["Classroom"] = relationship(back_populates='lessons')
+
+    teacher: Mapped["User"] = relationship(back_populates='lessons')
 
     homework: Mapped["Homework"] = relationship(back_populates='lesson', cascade='all, delete-orphan',
                                                 passive_deletes=True)
