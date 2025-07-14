@@ -1,6 +1,7 @@
 from datetime import datetime, time, date
 from typing import Optional, List
-from pydantic import BaseModel, model_validator, ConfigDict
+from pydantic import BaseModel, model_validator, ConfigDict, HttpUrl
+from fastapi import UploadFile, File
 
 
 def validate_time_func(values: dict):
@@ -37,6 +38,7 @@ class LessonRead(BaseModel):
     id: int
     name: str
     description: str
+    link: Optional[HttpUrl]
     day: date
     lesson_start: time
     lesson_end: time
@@ -46,6 +48,8 @@ class LessonRead(BaseModel):
     group_name: Optional[str] = None
     classroom_name: Optional[str] = None
     created_at: datetime
+
+    homework: Optional['HomeworkBase']
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -58,12 +62,14 @@ class LessonShort(BaseModel):
 class LessonBase(BaseModel):
     name: str
     description: str
+    link: Optional[HttpUrl] = None
     day: date
     lesson_start: time
     lesson_end: time
     teacher_id: int
     # group_id: int
     classroom_id: int
+
 
 
 class LessonCreate(LessonBase):
@@ -77,6 +83,7 @@ class LessonUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     day: Optional[date] = None
+    link: Optional[HttpUrl] = None
     lesson_start: Optional[time] = None
     lesson_end: Optional[time] = None
     teacher_id: Optional[int] = None
@@ -98,15 +105,20 @@ class HomeworkRead(BaseModel):
     description: str
     lesson_id: int
 
+    submissions: List["HomeworkSubmissionRead"] = []
+
 
 class HomeworkBase(BaseModel):
-
+    id: int
     deadline: date
     description: str
 
+    model_config = ConfigDict(from_attributes=True)
 
-class HomeworkCreate(HomeworkBase):
-    pass
+
+class HomeworkCreate(BaseModel):
+    deadline: date
+    description: str
 
 
 class HomeworkUpdate(BaseModel):
@@ -121,17 +133,13 @@ class HomeworkSubmissionRead(BaseModel):
     student_id: int
     file_path: Optional[str] = None
     content: Optional[str] = None
-    submitted_at: date
+    submitted_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class HomeworkSubmissionCreate(BaseModel):
+class HomeworkSubmissionUpdate(BaseModel):
     content: Optional[str] = None
-
-
-class HomeworkSubmissionUpdate(HomeworkSubmissionCreate):
-    pass
 
 
 class HomeworkReviewCreate(BaseModel):

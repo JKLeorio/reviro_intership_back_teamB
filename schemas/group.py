@@ -17,6 +17,8 @@ class GroupBase(BaseModel):
     course_id: int
     teacher_id: int
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class GroupResponse(BaseModel):
     id: int
