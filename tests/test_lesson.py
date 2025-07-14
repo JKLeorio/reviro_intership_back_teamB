@@ -183,7 +183,7 @@ async def test_update_lesson(client):
     data = user_response.json()
     teacher_id = data['id']
 
-    response = await client.patch(f"/lessons/lesson/1", json={"teacher_id": teacher_id})
+    response = await client.patch(f"/lessons/1", json={"teacher_id": teacher_id})
 
     assert response.status_code == 200
     assert response.json()['teacher_id'] == 1
@@ -193,8 +193,9 @@ async def test_update_lesson(client):
 @pytest.mark.role('teacher')
 async def test_update_lesson(client):
 
-    response = await client.patch(f"/lessons/lesson/1", json={"description": "Am, are, is",
-                                                              "link": "https://example.com/",})
+
+    response = await client.patch(f"/lessons/1", json={"description": "Am, are, is"})
+
 
     assert response.status_code == 200
     assert response.json()['description'] == "Am, are, is"
@@ -205,7 +206,7 @@ async def test_update_lesson(client):
 @pytest.mark.role('student')
 async def test_update_lesson(client):
 
-    response = await client.patch(f"/lessons/lesson/1", json={"name": "Am, are, is"})
+    response = await client.patch(f"/lessons/1", json={"name": "Am, are, is"})
 
     assert response.status_code == 403
     assert response.json()["detail"] == "You don't have enough permissions"
@@ -227,7 +228,7 @@ async def test_get_lessons(client):
 
 @pytest.mark.anyio
 async def test_get_lesson(client):
-    response = await client.get('/lessons/lesson/1')
+    response = await client.get('/lessons/1')
     assert response.status_code == 200
 
 
@@ -235,7 +236,7 @@ async def test_get_lesson(client):
 @pytest.mark.role('teacher')
 async def test_create_homework(client):
     homework_data = {'deadline': '2025-08-08', "description": "write a simple sentences with new words"}
-    response = await client.post('/homeworks/lesson/1/homework', json=homework_data)
+    response = await client.post('/homeworks/lesson/1', json=homework_data)
     assert response.status_code == 201
     assert response.json()['lesson_id'] == 1
     assert response.json()['id'] == 1
@@ -245,7 +246,7 @@ async def test_create_homework(client):
 @pytest.mark.role('student')
 async def test_create_homework_by_student(client):
     homework_data = {'deadline': '2025-08-08', "description": "write simple sentences with new words"}
-    response = await client.post('/homeworks/lesson/1/homework', json=homework_data)
+    response = await client.post('/homeworks/lesson/1', json=homework_data)
     assert response.status_code == 403
     assert response.json()['detail'] == "You don't have enough permissions"
 
@@ -335,7 +336,7 @@ async def test_get_homework_submission(client):
 
 @pytest.mark.anyio
 async def test_get_homework_submission(client):
-    response = await client.get(f"/submissions/homework/1/submission/1")
+    response = await client.get(f"/submissions/1")
     assert response.status_code == 200
     assert response.json()["content"] == "This is my homework text."
 
@@ -343,7 +344,7 @@ async def test_get_homework_submission(client):
 @pytest.mark.anyio
 @pytest.mark.role("student")
 async def test_get_homework_submission(client):
-    response = await client.get(f"/submissions/homework/1/submission/2")
+    response = await client.get(f"/submissions/2")
     assert response.status_code == 200
     assert response.json()["content"] == "This is my homework text content."
 
@@ -353,7 +354,7 @@ async def test_get_homework_submission(client):
 async def test_update_homework_submission(client):
     content_text = "This is my homework text content"
 
-    response = await client.patch("/submissions/homework/1/submission/2", data={"content": content_text})
+    response = await client.patch("/submissions/2", data={"content": content_text})
 
     assert response.status_code == 200
 
@@ -361,9 +362,10 @@ async def test_update_homework_submission(client):
 @pytest.mark.anyio
 @pytest.mark.role('student')
 async def test_destroy_homework_submission(client):
-    response = await client.delete("/submissions/homework/1/submission/2")
+
+    response = await client.delete("/submissions/2")
     assert response.status_code == 200
-    assert response.json()['detail'] == "Submission with id 2 has been deleted from homework with id 1"
+    assert response.json()['detail'] == "Submission with id 2 has been deleted"
 
 
 @pytest.mark.anyio
@@ -383,5 +385,5 @@ async def test_destroy_homework(client):
 
 @pytest.mark.anyio
 async def test_destroy_lesson(client):
-    response = await client.delete('/lessons/lesson/1')
+    response = await client.delete('/lessons/1')
     assert response.status_code == 200
