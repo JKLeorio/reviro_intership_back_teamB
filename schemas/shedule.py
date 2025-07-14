@@ -4,6 +4,7 @@ from schemas.lesson import LessonBase
 from schemas.user import UserBase
 
 class SheduleLesson(LessonBase):
+    id: int
     model_config = ConfigDict(from_attributes=True)
 
 class SheduleGroup(BaseModel):
@@ -15,7 +16,7 @@ class SheduleGroup(BaseModel):
 
 class SheduleItem(BaseModel):
     group: SheduleGroup
-    lessons: list[LessonBase]
+    lessons: list[SheduleLesson]
 
 class SheduleResponse(BaseModel):
     MON: Optional[list[SheduleItem]] = None
