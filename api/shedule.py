@@ -94,7 +94,10 @@ async def get_global_shedule(session: AsyncSession):
         selectinload(Group.course).selectinload(Course.language),
         selectinload(Group.course).selectinload(Course.level),
         selectinload(Group.students),
-        selectinload(Group.lessons),
+        selectinload(Group.lessons).options(
+            selectinload(Lesson.teacher),
+            selectinload(Lesson.classroom)
+        ),
     ).join(
         Group.lessons 
     ).where(
@@ -120,7 +123,10 @@ async def get_user_shedule(user_id, session: AsyncSession):
             selectinload(Group.teacher),
             selectinload(Group.course).selectinload(Course.language),
             selectinload(Group.course).selectinload(Course.level),
-            selectinload(Group.lessons),
+            selectinload(Group.lessons).options(
+                selectinload(Lesson.teacher),
+                selectinload(Lesson.classroom)
+        ),
         ).join(Group.lessons)
         .where(
             Group.is_archived.is_(False),
@@ -142,7 +148,10 @@ async def get_group_shedule(group_id: int,session: AsyncSession):
         selectinload(Group.teacher),
         selectinload(Group.course).selectinload(Course.language),
         selectinload(Group.course).selectinload(Course.level),
-        selectinload(Group.lessons),
+        selectinload(Group.lessons).options(
+            selectinload(Lesson.teacher),
+            selectinload(Lesson.classroom)
+        ),
     ).join(
         Group.lessons 
     ).where(
@@ -157,6 +166,20 @@ async def get_group_shedule(group_id: int,session: AsyncSession):
     group_lesson = result.scalars().unique().all()
     return group_lesson
 
+
+# async def get_teacher_shedule(teacher_id: int, session: AsyncSession):
+#     '''
+#     get teacher shedule
+#     '''
+#     week_start, week_end = get_week_start_end()
+#     stmt = select(Group).options(
+#         selectinload(Group.teacher),
+#         selectinload(Group.course).options(
+#             selectinload(Course.language),
+#             selectinload(Course.level)
+#             ),
+#         selectinload(Group.lessons)
+#     )
 
 @shedule_router.get(
     '/',
@@ -238,3 +261,15 @@ async def shedule_by_group(
     result = await get_group_shedule(group_id, session)
     shedule = format_shedule(result)
     return shedule
+
+
+# @shedule_router.get(
+#     '/teacher/my',
+#     response_model=SheduleResponse,
+#     status_code=status.HTTP_200_OK
+# )
+# async def shedule_teacher(
+#     user: User = Depends(current_teacher_user),
+#     session: AsyncSession = Depends(get_async_session)
+# ):
+#     pass
