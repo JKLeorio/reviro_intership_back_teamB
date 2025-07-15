@@ -116,6 +116,9 @@ async def user_profile(
     user: User = Depends(current_student_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    '''
+    Return current user profile data by the role
+    '''
     if user.role == Role.STUDENT:
         return await get_student_profile_data(user.id, session)
     elif user.role == Role.TEACHER:
@@ -134,6 +137,9 @@ async def user_data(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
     ):
+    '''
+    Return current user data
+    '''
     return user
 
 @user_router.get(
@@ -148,6 +154,9 @@ async def user_list(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
     ):
+    '''
+    Return list of users, admin only
+    '''
     query = user_filter.filter(
         select(User).offset(offset=offset).limit(limit=limit)
         )
@@ -165,6 +174,9 @@ async def user_detail(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Return user detail data by user id, admin only
+    '''
     user = await session.get(
         User, 
         user_id, 
@@ -190,6 +202,9 @@ async def user_update(
     user_manager: UserManager = Depends(get_user_manager),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Update user data by user id, admin only
+    '''
     try:
         old_user = await user_manager.get(user_id)
     except UserNotExists:
@@ -206,12 +221,15 @@ async def user_update(
         response_model=UserResponse,
         status_code=status.HTTP_200_OK
 )
-async def user_update(
+async def user_partial_update(
     user_id: int,
     user_update: UserPartialUpdate,
     user_manager: UserManager = Depends(get_user_manager),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Partial update user data by user id, admin only
+    '''
     try:
         old_user = await user_manager.get(user_id)
     except UserNotExists:
@@ -233,7 +251,9 @@ async def user_delete(
     user_manager: UserManager = Depends(get_user_manager),
     user: User = Depends(current_admin_user)
 ):
-    
+    '''
+    Delete user by user id, admin only
+    '''
     try:
         user_to_delete = await user_manager.get(user_id)
     except UserNotExists:
