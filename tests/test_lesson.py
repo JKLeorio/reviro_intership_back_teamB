@@ -360,6 +360,60 @@ async def test_update_homework_submission(client):
 
 
 @pytest.mark.anyio
+async def test_create_homework_review(client):
+    submission_id = 2
+    data = {"comment": "Great job!"}
+
+    response = await client.post(f"/homework_review/submission/{submission_id}", json=data)
+
+    assert response.status_code == 201
+    json_data = response.json()
+    assert json_data["submission_id"] == submission_id
+    assert json_data["comment"] == "Great job!"
+
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_get_homework_review_by_id(client):
+    response = await client.get("/homework_review/1")
+    assert response.status_code == 200
+    json_data = response.json()
+    assert "comment" in json_data
+
+
+@pytest.mark.anyio
+async def test_update_homework_review(client):
+    data = {"comment": "Обновленный комментарий"}
+    response = await client.patch("/homework_review/1", json=data)
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["comment"] == data["comment"]
+
+
+@pytest.mark.anyio
+async def test_delete_homework_review(client):
+    response = await client.delete("/homework_review/1")
+    assert response.status_code == 200
+    assert response.json()["detail"] == "Review with id 1 has been deleted"
+
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_get_nonexistent_review(client):
+    response = await client.get("/homework_review/999")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Review not found"
+
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_forbidden_review_access(client):
+    response = await client.get("/homework_review/2")
+    if response.status_code == 403:
+        assert response.json()["detail"] == "You are not allowed"
+
+
+@pytest.mark.anyio
 @pytest.mark.role('student')
 async def test_destroy_homework_submission(client):
 
