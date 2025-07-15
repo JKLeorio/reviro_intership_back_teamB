@@ -11,7 +11,7 @@ async def lesson_factory(session: AsyncSession) -> Callable[[Dict[str, type]], A
         lesson = Lesson(**lesson_data)
         session.add(lesson)
         await session.commit()
-        await session.refresh(lesson)
+        await session.refresh(lesson, attribute_names=['teacher', 'classroom'])
         return SheduleLesson.model_validate(lesson)
     return lesson
 
