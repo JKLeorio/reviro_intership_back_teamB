@@ -105,7 +105,18 @@ class HomeworkRead(BaseModel):
     description: str
     lesson_id: int
 
-    submissions: List["HomeworkSubmissionRead"] = []
+    submissions: List["HomeworkSubmissionShort"] = []
+
+
+class HomeworkSubmissionShort(BaseModel):
+    id: int
+    homework_id: int
+    student_id: int
+    file_path: Optional[str] = None
+    content: Optional[str] = None
+    submitted_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HomeworkBase(BaseModel):
@@ -127,35 +138,40 @@ class HomeworkUpdate(BaseModel):
     lesson_id: Optional[int] = None
 
 
-class HomeworkSubmissionRead(BaseModel):
-    id: int
-    homework_id: int
-    student_id: int
-    file_path: Optional[str] = None
-    content: Optional[str] = None
-    submitted_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+class HomeworkSubmissionRead(HomeworkSubmissionShort):
+    review: Optional["HomeworkReviewShort"] = None
 
 
 class HomeworkSubmissionUpdate(BaseModel):
     content: Optional[str] = None
 
 
+class HomeworkReviewShort(BaseModel):
+    id: int
+    comment: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class HomeworkReviewCreate(BaseModel):
-    submission_id: int
-    comment: Optional[str] = None
+    comment: str
 
 
 class HomeworkReviewRead(BaseModel):
     id: int
     submission_id: int
     teacher_id: int
-    comment: Optional[str] = None
-    reviewed_at: date
+    comment: str
+    reviewed_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class HomeworkReviewUpdate(HomeworkReviewCreate):
+class HomeworkReviewBase(BaseModel):
+    comment: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HomeworkReviewUpdate(HomeworkReviewBase):
     pass
