@@ -135,7 +135,6 @@ async def get_user_shedule(user_id, session: AsyncSession):
         )
     )
     result = await session.execute(stmt)
-    print(result)
     groups_lessons = result.scalars().unique().all()
     return groups_lessons
 
