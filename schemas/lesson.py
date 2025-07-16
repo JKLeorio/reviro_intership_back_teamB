@@ -101,33 +101,15 @@ class LessonUpdate(BaseModel):
 class HomeworkRead(BaseModel):
     id: int
     created_at: datetime
-    deadline: date
+    deadline: datetime
+    file_path: str
     description: str
     lesson_id: int
 
-    submissions: List["HomeworkSubmissionRead"] = []
+    submissions: List["HomeworkSubmissionShort"] = []
 
 
-class HomeworkBase(BaseModel):
-    id: int
-    deadline: date
-    description: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class HomeworkCreate(BaseModel):
-    deadline: date
-    description: str
-
-
-class HomeworkUpdate(BaseModel):
-    description: Optional[str] = None
-    deadline: Optional[date] = None
-    lesson_id: Optional[int] = None
-
-
-class HomeworkSubmissionRead(BaseModel):
+class HomeworkSubmissionShort(BaseModel):
     id: int
     homework_id: int
     student_id: int
@@ -138,24 +120,60 @@ class HomeworkSubmissionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class HomeworkBase(BaseModel):
+    id: int
+    deadline: datetime
+    description: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HomeworkCreate(BaseModel):
+    deadline: datetime
+    description: Optional[str]
+    file_path: Optional[str]
+
+
+class HomeworkUpdate(BaseModel):
+    description: Optional[str] = None
+    deadline: Optional[date] = None
+    lesson_id: Optional[int] = None
+
+
+class HomeworkSubmissionRead(HomeworkSubmissionShort):
+    review: Optional["HomeworkReviewShort"] = None
+
+
 class HomeworkSubmissionUpdate(BaseModel):
     content: Optional[str] = None
 
 
+class HomeworkReviewShort(BaseModel):
+    id: int
+    comment: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class HomeworkReviewCreate(BaseModel):
-    submission_id: int
-    comment: Optional[str] = None
+    comment: str
 
 
 class HomeworkReviewRead(BaseModel):
     id: int
     submission_id: int
     teacher_id: int
-    comment: Optional[str] = None
-    reviewed_at: date
+    comment: str
+    reviewed_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class HomeworkReviewUpdate(HomeworkReviewCreate):
+class HomeworkReviewBase(BaseModel):
+    comment: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HomeworkReviewUpdate(HomeworkReviewBase):
     pass
