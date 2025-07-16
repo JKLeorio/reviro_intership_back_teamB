@@ -167,3 +167,9 @@ async def test_shedule_by_group(client):
     response = await client.get('/shedule/group/' + str(LESSON_DATA['group_id']))
     assert response.status_code == status.HTTP_200_OK
     compare_shedule_with_result(response)
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_shedule_user(client):
+    response = await client.get('/shedule/my')
+    assert response.status_code == status.HTTP_200_OK

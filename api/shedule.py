@@ -6,7 +6,7 @@ import calendar
 import datetime
 
 from sqlalchemy import Sequence, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, with_loader_criteria, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import (
@@ -21,6 +21,7 @@ from fastapi_filter import FilterDepends
 from fastapi_filter.contrib.sqlalchemy import Filter
 
 from db.database import get_async_session
+from db.types import Role
 from models.group import Group
 from models.lesson import Lesson
 from models.user import User
@@ -89,49 +90,69 @@ async def get_global_shedule(session: AsyncSession):
     get global shedule for current week
     '''
     week_start, week_end = get_week_start_end()
-    stmt = select(Group).options(
-        selectinload(Group.teacher),
-        selectinload(Group.course).selectinload(Course.language),
-        selectinload(Group.course).selectinload(Course.level),
-        selectinload(Group.students),
-        selectinload(Group.lessons).options(
-            selectinload(Lesson.teacher),
-            selectinload(Lesson.classroom)
+    stmt = (
+    select(Group)
+    .options(
+        joinedload(Group.teacher),
+        joinedload(Group.course).options(
+            joinedload(Course.language),
+            joinedload(Course.level)
         ),
-    ).join(
-        Group.lessons 
-    ).where(
-        Group.is_archived.is_(False),
-        Lesson.day.between(
-            week_start, 
-            week_end
-            )
+        joinedload(Group.lessons).options(
+            joinedload(Lesson.teacher),
+            joinedload(Lesson.classroom)
+        ),
+    )
+    .options(
+        with_loader_criteria(
+            Lesson,
+            lambda cls:
+                (cls.day.between(week_start, week_end)),
+            include_aliases=True
         )
+    )
+    .join(Group.lessons)
+    .where(
+        Group.is_archived.is_(False),
+        Lesson.day.between(week_start, week_end)
+        )
+    )
     result = await session.execute(stmt)
     groups_lessons = result.scalars().unique().all()
     return groups_lessons
 
 
-async def get_user_shedule(user_id, session: AsyncSession):
+async def get_student_shedule(student_id, session: AsyncSession):
     '''
-    get user shedule for current week
+    get student shedule for current week
     '''
     week_start, week_end = get_week_start_end()
     stmt = (
-        select(Group)
-        .options(
-            selectinload(Group.teacher),
-            selectinload(Group.course).selectinload(Course.language),
-            selectinload(Group.course).selectinload(Course.level),
-            selectinload(Group.lessons).options(
-                selectinload(Lesson.teacher),
-                selectinload(Lesson.classroom)
+    select(Group)
+    .options(
+        joinedload(Group.teacher),
+        joinedload(Group.course).options(
+            joinedload(Course.language),
+            joinedload(Course.level)
         ),
-        ).join(Group.lessons)
-        .where(
-            Group.is_archived.is_(False),
-            Group.students.any(User.id == user_id),
-            Lesson.day.between(week_start, week_end)
+        joinedload(Group.lessons).options(
+            joinedload(Lesson.teacher),
+            joinedload(Lesson.classroom)
+        ),
+    )
+    .options(
+        with_loader_criteria(
+            Lesson,
+            lambda cls:
+                (cls.day.between(week_start, week_end)),
+            include_aliases=True
+        )
+    )
+    .join(Group.lessons)
+    .where(
+        Group.is_archived.is_(False),
+        Group.students.any(User.id == student_id),
+        Lesson.day.between(week_start, week_end)
         )
     )
     result = await session.execute(stmt)
@@ -144,42 +165,75 @@ async def get_group_shedule(group_id: int,session: AsyncSession):
     get group shedule for current week
     '''
     week_start, week_end = get_week_start_end()
-    stmt = select(Group).options(
-        selectinload(Group.teacher),
-        selectinload(Group.course).selectinload(Course.language),
-        selectinload(Group.course).selectinload(Course.level),
-        selectinload(Group.lessons).options(
-            selectinload(Lesson.teacher),
-            selectinload(Lesson.classroom)
+    stmt = (
+    select(Group)
+    .options(
+        joinedload(Group.teacher),
+        joinedload(Group.course).options(
+            joinedload(Course.language),
+            joinedload(Course.level)
         ),
-    ).join(
-        Group.lessons 
-    ).where(
-        Group.id == group_id, 
-        Group.is_archived.is_(False),
-        Lesson.day.between(
-            week_start, 
-            week_end
-            )
+        joinedload(Group.lessons).options(
+            joinedload(Lesson.teacher),
+            joinedload(Lesson.classroom)
+        ),
+    )
+    .options(
+        with_loader_criteria(
+            Lesson,
+            lambda cls:
+                (cls.day.between(week_start, week_end)),
+            include_aliases=True
         )
+    )
+    .join(Group.lessons)
+    .where(
+        Group.is_archived.is_(False),
+        Group.id == group_id,
+        Lesson.day.between(week_start, week_end)
+        )
+    )
     result = await session.execute(stmt)
-    group_lesson = result.scalars().unique().all()
-    return group_lesson
+    groups_lessons = result.scalars().unique().all()
+    return groups_lessons
 
 
-# async def get_teacher_shedule(teacher_id: int, session: AsyncSession):
-#     '''
-#     get teacher shedule
-#     '''
-#     week_start, week_end = get_week_start_end()
-#     stmt = select(Group).options(
-#         selectinload(Group.teacher),
-#         selectinload(Group.course).options(
-#             selectinload(Course.language),
-#             selectinload(Course.level)
-#             ),
-#         selectinload(Group.lessons)
-#     )
+async def get_teacher_shedule(teacher_id: int, session: AsyncSession):
+    '''
+    get teacher shedule for current week
+    '''
+    week_start, week_end = get_week_start_end()
+    stmt = (
+    select(Group)
+    .options(
+        joinedload(Group.teacher),
+        joinedload(Group.course).options(
+            joinedload(Course.language),
+            joinedload(Course.level)
+        ),
+        joinedload(Group.lessons).options(
+            joinedload(Lesson.teacher),
+            joinedload(Lesson.classroom)
+        ),
+    )
+    .options(
+        with_loader_criteria(
+            Lesson,
+            lambda cls: (cls.teacher_id == teacher_id) &
+                        (cls.day.between(week_start, week_end)),
+            include_aliases=True
+        )
+    )
+    .join(Group.lessons)
+    .where(
+        Group.is_archived.is_(False),
+        Lesson.teacher_id == teacher_id,
+        Lesson.day.between(week_start, week_end)
+        )
+    )
+    result = await session.execute(stmt)
+    groups_lessons = result.unique().scalars().all()
+    return groups_lessons
 
 @shedule_router.get(
     '/',
@@ -210,7 +264,15 @@ async def shedule_user(
     '''
     Returns current user shedule for current week
     '''
-    result = await get_user_shedule(user.id, session)
+    result=None
+    
+    if user.role == Role.STUDENT:
+        result = await get_student_shedule(user.id, session)
+    elif user.role == Role.TEACHER:
+        result = await get_teacher_shedule(user.id, session)
+    elif user.role == Role.ADMIN:
+        #Временно
+        result = await get_teacher_shedule(user.id, session)
     shedule = format_shedule(result)
     return shedule
 
@@ -234,7 +296,7 @@ async def shedule_by_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='user not found'
             )
-    result = await get_user_shedule(user_id, session)
+    result = await get_student_shedule(user_id, session)
     shedule = format_shedule(result)
     return shedule
 
@@ -261,15 +323,3 @@ async def shedule_by_group(
     result = await get_group_shedule(group_id, session)
     shedule = format_shedule(result)
     return shedule
-
-
-# @shedule_router.get(
-#     '/teacher/my',
-#     response_model=SheduleResponse,
-#     status_code=status.HTTP_200_OK
-# )
-# async def shedule_teacher(
-#     user: User = Depends(current_teacher_user),
-#     session: AsyncSession = Depends(get_async_session)
-# ):
-#     pass
