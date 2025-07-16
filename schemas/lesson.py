@@ -101,7 +101,8 @@ class LessonUpdate(BaseModel):
 class HomeworkRead(BaseModel):
     id: int
     created_at: datetime
-    deadline: date
+    deadline: datetime
+    file_path: str
     description: str
     lesson_id: int
 
@@ -121,15 +122,16 @@ class HomeworkSubmissionShort(BaseModel):
 
 class HomeworkBase(BaseModel):
     id: int
-    deadline: date
+    deadline: datetime
     description: str
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class HomeworkCreate(BaseModel):
-    deadline: date
-    description: str
+    deadline: datetime
+    description: Optional[str]
+    file_path: Optional[str]
 
 
 class HomeworkUpdate(BaseModel):
