@@ -122,6 +122,8 @@ async def test_set_up(
         lesson['lesson_start'] = lesson['lesson_start'].isoformat()
         lesson['lesson_end'] = lesson['lesson_end'].isoformat()
         lesson['link'] = str(lesson['link'])
+        lesson['teacher'] = dict(lesson['teacher'])
+        lesson['classroom'] = dict(lesson['classroom'])
         SHEDULE_RESPONSE[week_day].append(
             {
                 'group': {
@@ -165,3 +167,9 @@ async def test_shedule_by_group(client):
     response = await client.get('/shedule/group/' + str(LESSON_DATA['group_id']))
     assert response.status_code == status.HTTP_200_OK
     compare_shedule_with_result(response)
+
+@pytest.mark.anyio
+@pytest.mark.role('student')
+async def test_shedule_user(client):
+    response = await client.get('/shedule/my')
+    assert response.status_code == status.HTTP_200_OK
