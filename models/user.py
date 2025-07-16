@@ -10,6 +10,7 @@ from db.types import Role
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from models.lesson import Lesson
     from models.group import Group
     from models.payment import Payment, Subscription
 
@@ -42,6 +43,6 @@ class User(SQLAlchemyBaseUserTable[int], Base):
         secondary=student_group_association_table,
         back_populates="students"
     )
-
+    lessons: Mapped[list["Lesson"]] = relationship(back_populates="teacher")
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="owner")
     payments: Mapped[list["Payment"]] = relationship(back_populates="owner")

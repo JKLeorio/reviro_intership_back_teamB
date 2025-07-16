@@ -1,11 +1,16 @@
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, TYPE_CHECKING
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from fastapi_users import schemas
 
-from db.types import Gender, Role
+from db.types import Role
+from schemas.course import ProfileCourse
 
-#Используется для связей других схем
+if TYPE_CHECKING:
+    from schemas.group import GroupBase
+    from schemas.lesson import HomeworkBase, LessonBase
+    
+
 class UserBase(BaseModel):
     id: int
     first_name: str
@@ -24,8 +29,7 @@ class UserCreate(schemas.BaseUserCreate):
     email: EmailStr = Field(..., max_length=254)
     # role: Role = Field(Role.STUDENT)
 
-#Тут уже может быть вывод с вложенными полями,
-#которые уже будут использовать чужие base модели
+
 class UserResponse(UserBase):
     pass
 
@@ -38,15 +42,15 @@ class UserRegister(BaseModel):
         description="User role, default is 'STUDENT'")
     phone_number: Optional[str] = None
 
-
-class UserUpdate(UserCreate):
+class UserUpdate(schemas.CreateUpdateDictModel):
+    first_name: str
+    last_name: str
     phone_number: str
 
 
-class UserPartialUpdate(BaseModel):
+class UserPartialUpdate(schemas.CreateUpdateDictModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
     last_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    email: Optional[EmailStr] = Field(None, max_length=254)
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
 
@@ -89,3 +93,10 @@ class SuperAdminUpdate(schemas.BaseUserUpdate):
 
 class AdminRegister(UserRegister):
     role: Literal[Role.ADMIN] = Role.ADMIN
+
+
+class TeacherProfile(UserBase):
+    courses: list[ProfileCourse] = []
+
+class StudentProfile(UserBase):
+    courses: list[ProfileCourse] = []
