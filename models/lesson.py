@@ -73,8 +73,9 @@ class Homework(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    deadline: Mapped[date] = mapped_column(Date, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    file_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     lesson_id: Mapped[int] = mapped_column(ForeignKey('lessons.id', ondelete='CASCADE'))
     lesson: Mapped["Lesson"] = relationship(back_populates='homework')
@@ -94,7 +95,7 @@ class HomeworkSubmission(Base):
     content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
-    homework: Mapped["Homework"] = relationship('Homework', back_populates='submissions')
+    homework: Mapped["Homework"] = relationship('Homework', back_populates='submissions', passive_deletes=True)
     review: Mapped['HomeworkReview'] = relationship('HomeworkReview', back_populates='submission',
                                                     cascade='all, delete-orphan')
     student = relationship('User')
@@ -104,10 +105,10 @@ class HomeworkReview(Base):
     __tablename__ = 'homework_reviews'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    submission_id: Mapped[int] = mapped_column(ForeignKey("homework_submissions.id"))
+    submission_id: Mapped[int] = mapped_column(ForeignKey("homework_submissions.id", ondelete='CASCADE'))
     teacher_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     comment: Mapped[str] = mapped_column(Text, nullable=False)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
-    submission = relationship('HomeworkSubmission', back_populates='review')
+    submission = relationship('HomeworkSubmission', back_populates='review', passive_deletes=True)
     teacher = relationship('User')
