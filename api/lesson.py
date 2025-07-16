@@ -8,16 +8,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+
 from api.auth import current_student_user, current_teacher_user, current_admin_user
 from db.types import Role
 
 from models.group import Group
-from models.lesson import Lesson, Classroom, Homework, HomeworkSubmission
+from models.lesson import Lesson, Classroom, Homework, HomeworkSubmission, HomeworkReview
 from models.user import User
 
 from schemas.lesson import (
-    LessonRead, LessonCreate, LessonUpdate, LessonBase, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
-    HomeworkCreate, HomeworkUpdate, HomeworkSubmissionRead, HomeworkBase
+    LessonRead, LessonCreate, LessonUpdate, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
+    HomeworkCreate, HomeworkUpdate, HomeworkSubmissionRead, HomeworkReviewCreate, HomeworkReviewRead, HomeworkReviewBase,
+    HomeworkReviewUpdate, HomeworkSubmissionShort
 )
 
 from db.database import get_async_session
@@ -26,9 +28,12 @@ lesson_router = APIRouter()
 classroom_router = APIRouter()
 homework_router = APIRouter()
 homework_submission_router = APIRouter()
+homework_review_router = APIRouter()
 
 
 MEDIA_FOLDER = "media/homework_submissions"
+HOMEWORK_FOLDER = "media/homeworks"
+os.makedirs(HOMEWORK_FOLDER, exist_ok=True)
 os.makedirs(MEDIA_FOLDER, exist_ok=True)
 
 
@@ -143,9 +148,7 @@ async def get_lessons_by_groups(group_id: int,
     return lessons
 
 
-
 @lesson_router.get('/{lesson_id}', response_model=LessonRead, status_code=status.HTTP_200_OK)
-
 async def get_lesson_by_lesson_id(lesson_id: int, db: AsyncSession = Depends(get_async_session),
 
                               user: User = Depends(current_student_user)):
@@ -260,7 +263,6 @@ async def get_homeworks_for_user(user_id, db: AsyncSession):
 #     return homeworks
 
 
-
 @homework_router.get("/{homework_id}", response_model=HomeworkRead,
 
                      status_code=status.HTTP_200_OK)
@@ -283,30 +285,59 @@ async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_as
 
 
 @homework_router.post("/lesson/{lesson_id}", response_model=HomeworkRead, status_code=status.HTTP_201_CREATED)
-async def create_homework(lesson_id: int, data: HomeworkCreate,
+async def create_homework(lesson_id: int, deadline: datetime = Form(),
+                          description: Optional[str] = Form(None), file: UploadFile | str = File(None),
                           db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
     '''
     Creates a homework from the submitted data
     '''
-    result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
-    lesson = result.scalar_one_or_none()
+    if not file and not description:
+        raise HTTPException(status_code=400, detail="Either file or content must be provided")
+    lesson = await db.get(Lesson, lesson_id)
     if not lesson:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson doesn't exist")
-    if user.role not in (Role.TEACHER, Role.ADMIN):
+    if lesson.teacher_id != user.id and user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
-    new_homework_data = data.model_dump(exclude_unset=True)
-    new_homework_data['lesson_id'] = lesson_id
+    file_path = None
+    if file:
+        os.makedirs(HOMEWORK_FOLDER, exist_ok=True)
+        safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
+        filename = f"{lesson.name}-{lesson_id}_{safe_datetime}_{file.filename}"
+        file_path = os.path.join(HOMEWORK_FOLDER, filename)
+        with open(file_path, 'wb') as f_out:
+            f_out.write(await file.read())
 
-    new_homework = Homework(**new_homework_data)
+    new_homework = Homework(
+        lesson_id=lesson_id,
+        created_at=datetime.now(timezone.utc),
+        file_path=file_path,
+        description=description,
+        deadline=deadline
+    )
     db.add(new_homework)
     await db.commit()
     await db.refresh(new_homework)
     return new_homework
 
 
+@homework_router.get("/{homework_id}/download",
+                                name="download_homework")
+async def download_submission(homework_id: int, db: AsyncSession = Depends(get_async_session),
+                              user: User = Depends(current_student_user)):
+    homework = await db.get(Homework, homework_id)
+    if not homework:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    if not homework.file_path:
+        raise HTTPException(status_code=404, detail="No file attached")
+
+    return FileResponse(homework.file_path, filename=os.path.basename(homework.file_path))
+
+
 @homework_router.patch("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
-async def update_homework(homework_id: int, data: HomeworkUpdate, db: AsyncSession = Depends(get_async_session),
+async def update_homework(homework_id: int, deadline: datetime = Form(),
+                          description: Optional[str] = Form(None), file: UploadFile | str = File(None),
+                          db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
     '''
     Updates a homework by homework id from the submitted data
@@ -319,9 +350,18 @@ async def update_homework(homework_id: int, data: HomeworkUpdate, db: AsyncSessi
     if user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    new_data = data.model_dump(exclude_unset=True)
-    for key, value in new_data.items():
-        setattr(homework, key, value)
+    if deadline:
+        homework.deadline = deadline
+    if description:
+        homework.description = description
+    if file:
+        os.makedirs(HOMEWORK_FOLDER, exist_ok=True)
+        safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
+        filename = f"{homework_id}_{safe_datetime}_{file.filename}"
+        file_path = os.path.join(MEDIA_FOLDER, filename)
+        async with aiofiles.open(file_path, 'wb') as f_out:
+            await f_out.write(await file.read())
+        homework.file_path = file_path
 
     await db.commit()
     await db.refresh(homework)
@@ -348,13 +388,22 @@ async def destroy_homework(homework_id: int, db: AsyncSession = Depends(get_asyn
     return {"detail": f"Homework with id {homework_id} has been deleted"}
 
 
-@homework_submission_router.post('/homework/{homework_id}', response_model=HomeworkSubmissionRead,
+@homework_submission_router.post('/homework/{homework_id}', response_model=HomeworkSubmissionShort,
                                  status_code=status.HTTP_201_CREATED)
 async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
                           file: UploadFile | str = File(None),
                           db: AsyncSession = Depends(get_async_session), user: User = Depends(current_student_user)):
     if not file and not content:
         raise HTTPException(status_code=400, detail="Either file or content must be provided")
+    homework = await db.get(Homework, homework_id)
+    if not homework:
+        raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
+
+    existing_submission_result = await db.execute(select(HomeworkSubmission).where(
+        (HomeworkSubmission.homework_id == homework_id) & (HomeworkSubmission.student_id == user.id)))
+    existing_submission = existing_submission_result.scalar_one_or_none()
+    if existing_submission:
+        raise HTTPException(status_code=400, detail="You have already submitted this homework")
 
     file_path = None
     if file:
@@ -370,7 +419,7 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
         student_id=user.id,
         file_path=file_path,
         content=content,
-        submitted_at=datetime.now(timezone.utc).date()
+        submitted_at=datetime.now(timezone.utc)
 
     )
 
@@ -380,7 +429,7 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
     return submission
 
 
-@homework_submission_router.get('/homework/{homework_id}', response_model=List[HomeworkSubmissionRead],
+@homework_submission_router.get('/homework/{homework_id}', response_model=List[HomeworkSubmissionShort],
                                 status_code=status.HTTP_200_OK)
 async def get_homework_submissions(homework_id: int, db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_teacher_user)):
@@ -396,7 +445,8 @@ async def get_homework_submissions(homework_id: int, db: AsyncSession = Depends(
 
 
 async def get_homework_submission_or_none(submission_id, db):
-    result = await db.execute(select(HomeworkSubmission).where(HomeworkSubmission.id == submission_id))
+    result = await db.execute(select(HomeworkSubmission).where(HomeworkSubmission.id == submission_id)
+                              .options(selectinload(HomeworkSubmission.review)))
     return result.scalar_one_or_none()
 
 
@@ -430,17 +480,11 @@ async def get_homework_submission(submission_id: int, request: Request,
     download_url = None
     if submission.file_path:
         download_url = str(request.url_for("download_submission", submission_id=submission_id))
-    return {
-        "id": submission.id,
-        "homework_id": submission.homework_id,
-        "student_id": submission.student_id,
-        "file_path": download_url,
-        "content": submission.content,
-        "submitted_at": submission.submitted_at,
-    }
+    submission.file_path = download_url
+    return submission
 
 
-@homework_submission_router.patch('/{submission_id}', response_model=HomeworkSubmissionRead,
+@homework_submission_router.patch('/{submission_id}', response_model=HomeworkSubmissionShort,
                                   status_code=status.HTTP_200_OK)
 async def update_homework_submission(submission_id: int, content: Optional[str] = None,
                                      file: UploadFile | str = File(None),
@@ -457,7 +501,8 @@ async def update_homework_submission(submission_id: int, content: Optional[str] 
         submission.content = content
     if file:
         os.makedirs(MEDIA_FOLDER, exist_ok=True)
-        filename = f"{user.id}_{datetime.datetime.utcnow().isoformat()}_{file.filename}"
+        safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
+        filename = f"{user.id}_{safe_datetime}_{file.filename}"
         file_path = os.path.join(MEDIA_FOLDER, filename)
         async with aiofiles.open(file_path, 'wb') as f_out:
             await f_out.write(await file.read())
@@ -484,3 +529,79 @@ async def destroy_homework_submission(submission_id: int,
     await db.delete(submission)
     await db.commit()
     return {"detail": f"Submission with id {submission_id} has been deleted"}
+
+
+@homework_review_router.post('/submission/{submission_id}', response_model=HomeworkReviewRead,
+                             status_code=status.HTTP_201_CREATED)
+async def create_homework_review(submission_id: int, data: HomeworkReviewCreate,
+                                 db: AsyncSession = Depends(get_async_session),
+                                 user: User = Depends(current_teacher_user)):
+    result = await db.execute(select(HomeworkSubmission).where(HomeworkSubmission.id == submission_id)
+                              .options(selectinload(HomeworkSubmission.homework)
+                                       .selectinload(Homework.lesson)))
+    submission = result.scalar_one_or_none()
+    if submission is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    if user.role == Role.TEACHER and user.id != submission.homework.lesson.teacher_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
+    existing_review = (await db.execute(select(HomeworkReview)
+                                       .where((HomeworkReview.submission_id == submission_id) &
+                                              (HomeworkReview.teacher_id == user.id)))).scalar_one_or_none()
+    if existing_review:
+        raise HTTPException(status_code=400, detail='You have already review this submission')
+    new_data = data.model_dump(exclude_unset=True)
+    new_data['teacher_id'] = user.id
+    new_data['submission_id'] = submission_id
+    review = HomeworkReview(**new_data)
+    db.add(review)
+    await db.commit()
+    await db.refresh(review)
+    return review
+
+
+@homework_review_router.get('/{review_id}', response_model=HomeworkReviewBase, status_code=status.HTTP_200_OK)
+async def get_homework_review_by_id(review_id: int, db: AsyncSession = Depends(get_async_session),
+                                    user: User = Depends(current_student_user)):
+    result = await db.execute(select(HomeworkReview).where(HomeworkReview.id == review_id).
+                              options(selectinload(HomeworkReview.submission)))
+
+    review = result.scalar_one_or_none()
+    if review is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+    if user.id != review.submission.student_id and user.role not in (Role.ADMIN, Role.TEACHER):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
+    return review
+
+
+async def get_review_or_none(review_id, db, user):
+    result = await db.execute(select(HomeworkReview).where(HomeworkReview.id == review_id).
+                              options(selectinload(HomeworkReview.submission).selectinload(HomeworkSubmission.homework)
+                                      .selectinload(Homework.lesson)))
+    review = result.scalar_one_or_none()
+    if review is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+    if user.id != review.submission.homework.lesson.teacher_id and user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
+    return review
+
+
+@homework_review_router.patch('/{review_id}', response_model=HomeworkReviewRead, status_code=status.HTTP_200_OK)
+async def update_homework_review(review_id: int, data: HomeworkReviewUpdate,
+                                 db: AsyncSession = Depends(get_async_session),
+                                 user: User = Depends(current_teacher_user)):
+    review = await get_review_or_none(review_id, db, user)
+    new_data = data.model_dump(exclude_unset=True)
+    for key, value in new_data.items():
+        setattr(review, key, value)
+    await db.commit()
+    await db.refresh(review)
+    return review
+
+
+@homework_review_router.delete('/{review_id}', status_code=status.HTTP_200_OK)
+async def destroy_homework_review(review_id: int, db: AsyncSession = Depends(get_async_session),
+                                  user: User = Depends(current_teacher_user)):
+    review = await get_review_or_none(review_id, db, user)
+    await db.delete(review)
+    await db.commit()
+    return {'detail': f"Review with id {review_id} has been deleted"}
