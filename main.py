@@ -1,6 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.enrollment import enrollment_router
 from api.auth import authRouter
@@ -12,6 +13,16 @@ from api.payment import payment_router, subscription_router
 from api.shedule import shedule_router
 
 app = FastAPI()
+
+origins = ['*']
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 app.mount("/media", StaticFiles(directory="media"), name="media")
