@@ -1,20 +1,20 @@
-from typing import AsyncGenerator
 import pytest
+import shutil
+import os
 from typing import AsyncGenerator
-import asyncpg
 from httpx import AsyncClient, ASGITransport
 
-from decouple import config
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from db.database import get_async_session
 from main import app
-# from db.database import engine
 from db.dbbase import Base
-from api.auth import current_admin_user, current_user
+from api.auth import current_user
 from models.user import User
 from db.types import Role
 from decouple import config
+
+from api.lesson import MEDIA_FOLDER, HOMEWORK_FOLDER
 
 DATABASE_URL = config('TEST_DB_URL')
 
@@ -107,3 +107,17 @@ def auto_override_user(request):
     app.dependency_overrides[current_user] = override_user
     yield
     app.dependency_overrides.pop(current_user, None)
+
+
+@pytest.fixture(autouse=True)
+def patch_media_folders(monkeypatch, tmp_path):
+    test_media_submissions = tmp_path / "homework_submissions"
+    test_media_homeworks = tmp_path / "homeworks"
+
+    test_media_submissions.mkdir()
+    test_media_homeworks.mkdir()
+
+    monkeypatch.setattr('api.lesson.MEDIA_FOLDER', str(test_media_submissions))
+    monkeypatch.setattr('api.lesson.HOMEWORK_FOLDER', str(test_media_homeworks))
+
+    yield
