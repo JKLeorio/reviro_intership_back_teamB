@@ -122,11 +122,12 @@ async def register_admin(
 
     user = await user_manager.create(AdminCreate(**user_data_dump))
 
-    print(password)
     #Password sending logic here, for example sending into user email
     #smtp_server.send(message=f'here your password {password} for {url}')
-
-    return user
+    
+    response = UserResponse.model_validate(user)
+    response.password = password
+    return response
 
 
 @authRouter.post("/register-user", 
@@ -149,8 +150,9 @@ async def register_user(
     user_data_dump['password'] = password
     user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
 
-    print(password)
     #Password sending logic here, for example sending into user email
     #smtp_server.send(message=f'here your password {password} for {url}')
 
-    return user
+    response = UserResponse.model_validate(user)
+    response.password = password
+    return response
