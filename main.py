@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.enrollment import enrollment_router
 from api.auth import authRouter
 from api.course import course_router, language_router, level_router
-from api.lesson import lesson_router, classroom_router, homework_router, homework_submission_router
+from api.lesson import (lesson_router, classroom_router, homework_router, homework_submission_router,
+                        homework_review_router)
 from api.group import group_students_router, group_router
 from api.user import user_router
 from api.payment import payment_router, subscription_router
@@ -41,9 +42,11 @@ app.include_router(lesson_router, prefix='/lessons', tags=['Lessons'])
 app.include_router(classroom_router, prefix='/classrooms', tags=['Classrooms'])
 app.include_router(homework_router, prefix='/homeworks', tags=['Homeworks-teacher'])
 app.include_router(homework_submission_router, prefix='/submissions', tags=['Homeworks-student'])
+app.include_router(homework_review_router, prefix='/homework_review', tags=['Homeworks-review'])
 app.include_router(payment_router, prefix='/payment', tags=['Payments'])
 app.include_router(subscription_router, prefix='/subscription', tags=['Subscriptions'])
 app.include_router(user_router, prefix='/user', tags=['Users'])
+
 
 if __name__ == "__main__":
     uvicorn.run(
