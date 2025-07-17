@@ -71,10 +71,12 @@ class StudentTeacherRegister(UserRegister):
 
 
 class StudentTeacherCreate(UserCreate):
+    phone_number: Optional[str] = None
     role: Role = Role.STUDENT
 
 
 class AdminCreate(UserCreate):
+    phone_number: Optional[str] = None
     role: Role = Role.ADMIN
 
 
