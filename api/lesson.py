@@ -19,6 +19,7 @@ from models.user import User
 from schemas.lesson import (
     LessonRead, LessonCreate, LessonUpdate, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
     HomeworkSubmissionRead, HomeworkReviewCreate, HomeworkReviewRead, HomeworkReviewBase,
+
     HomeworkReviewUpdate, HomeworkSubmissionShort
 )
 
@@ -50,6 +51,7 @@ async def get_classroom_or_404(classroom_id: int, db: AsyncSession):
 def get_group_students(group):
     students_ids = [student.id for student in group.students]
     return students_ids
+
 
 @classroom_router.get('/', response_model=List[ClassroomRead], status_code=status.HTTP_200_OK)
 async def get_all_classrooms(db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
@@ -170,7 +172,7 @@ async def get_lesson_by_lesson_id(lesson_id: int, db: AsyncSession = Depends(get
     return lesson
 
 
-@lesson_router.post('/group/{group_id}/new_lesson', response_model=LessonRead, status_code=status.HTTP_201_CREATED)
+@lesson_router.post('/group/{group_id}/new_lesson', response_model=LessonBase, status_code=status.HTTP_201_CREATED)
 async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_teacher_user)):
     '''
@@ -195,7 +197,7 @@ async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSessi
     return new_lesson.scalar_one()
 
 
-@lesson_router.patch('/{lesson_id}', response_model=LessonRead, status_code=status.HTTP_200_OK)
+@lesson_router.patch('/{lesson_id}', response_model=LessonBase, status_code=status.HTTP_200_OK)
 async def update_lesson(lesson_data: LessonUpdate, lesson_id: int,
                         db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
     '''
@@ -430,11 +432,12 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
     if not homework:
         raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
 
+    if not homework:
+        raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
+
     students_ids = get_group_students(homework.lesson.group)
     if user.role != Role.ADMIN and user.role != Role.TEACHER and user.id not in students_ids:
         raise HTTPException(status_code=403, detail="You are not allowed")
-    if not homework:
-        raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
 
     if not file and not content:
         raise HTTPException(status_code=400, detail="Either file or content must be provided")
