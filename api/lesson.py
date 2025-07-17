@@ -17,7 +17,7 @@ from models.lesson import Lesson, Classroom, Homework, HomeworkSubmission, Homew
 from models.user import User
 
 from schemas.lesson import (
-    LessonRead, LessonCreate, LessonUpdate, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
+    LessonRead, LessonCreate, LessonUpdate, LessonBase, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
     HomeworkSubmissionRead, HomeworkReviewCreate, HomeworkReviewRead, HomeworkReviewBase,
     HomeworkReviewUpdate, HomeworkSubmissionShort
 )
@@ -195,7 +195,7 @@ async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSessi
     return new_lesson.scalar_one()
 
 
-@lesson_router.patch('/{lesson_id}', response_model=LessonRead, status_code=status.HTTP_200_OK)
+@lesson_router.patch('/{lesson_id}', response_model=LessonBase, status_code=status.HTTP_200_OK)
 async def update_lesson(lesson_data: LessonUpdate, lesson_id: int,
                         db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
     '''
