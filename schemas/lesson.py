@@ -102,8 +102,8 @@ class HomeworkRead(BaseModel):
     id: int
     created_at: datetime
     deadline: datetime
-    file_path: str
-    description: str
+    file_path: Optional[str] = None
+    description: Optional[str] = None
     lesson_id: int
 
     submissions: List["HomeworkSubmissionShort"] = []
@@ -123,15 +123,16 @@ class HomeworkSubmissionShort(BaseModel):
 class HomeworkBase(BaseModel):
     id: int
     deadline: datetime
-    description: str
+    file_path: Optional[str] = None
+    description: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class HomeworkCreate(BaseModel):
     deadline: datetime
-    description: Optional[str]
-    file_path: Optional[str]
+    description: Optional[str] = None
+    file_path: Optional[str] = None
 
 
 class HomeworkUpdate(BaseModel):
@@ -146,6 +147,7 @@ class HomeworkSubmissionRead(HomeworkSubmissionShort):
 
 class HomeworkSubmissionUpdate(BaseModel):
     content: Optional[str] = None
+    file_path: Optional[str] = None
 
 
 class HomeworkReviewShort(BaseModel):
