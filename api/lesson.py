@@ -49,7 +49,7 @@ async def get_classroom_or_404(classroom_id: int, db: AsyncSession):
 
 def get_group_students(group):
     students_ids = [student.id for student in group.students]
-
+    return students_ids
 
 @classroom_router.get('/', response_model=List[ClassroomRead], status_code=status.HTTP_200_OK)
 async def get_all_classrooms(db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
@@ -305,8 +305,8 @@ async def create_homework(lesson_id: int, deadline: datetime = Form(),
         safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
         filename = f"{lesson.name}-{lesson_id}_{safe_datetime}_{file.filename}"
         file_path = os.path.join(HOMEWORK_FOLDER, filename)
-        with open(file_path, 'wb') as f_out:
-            f_out.write(await file.read())
+        async with aiofiles.open(file_path, 'wb') as f_out:
+            await f_out.write(await file.read())
 
     new_homework = Homework(
         lesson_id=lesson_id,
@@ -321,11 +321,25 @@ async def create_homework(lesson_id: int, deadline: datetime = Form(),
     return new_homework
 
 
-@homework_router.get("/{homework_id}/download",
-                                name="download_homework")
+async def get_homework_or_none(homework_id, db, user):
+    result = await db.execute(select(Homework)
+    .where(Homework.id == homework_id)
+    .options(
+        selectinload(Homework.lesson)
+        .selectinload(Lesson.group)
+        .selectinload(Group.students)
+    )
+    )
+    homework = result.scalar_one_or_none()
+    return homework
+
+
+@homework_router.get("/{homework_id}/download", name="download_homework")
 async def download_submission(homework_id: int, db: AsyncSession = Depends(get_async_session),
                               user: User = Depends(current_student_user)):
-    homework = await db.get(Homework, homework_id)
+    homework = await get_homework_or_none(homework_id, db, user)
+    if user.id not in get_group_students(homework.lesson.group):
+        raise HTTPException(status_code=403, detail="You are not allowed")
     if not homework:
         raise HTTPException(status_code=404, detail="Submission not found")
     if not homework.file_path:
@@ -355,10 +369,12 @@ async def update_homework(homework_id: int, deadline: datetime = Form(),
     if description:
         homework.description = description
     if file:
+        if homework.file_path and os.path.exists(homework.file_path):
+            os.remove(homework.file_path)
         os.makedirs(HOMEWORK_FOLDER, exist_ok=True)
         safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
         filename = f"{homework_id}_{safe_datetime}_{file.filename}"
-        file_path = os.path.join(MEDIA_FOLDER, filename)
+        file_path = os.path.join(HOMEWORK_FOLDER, filename)
         async with aiofiles.open(file_path, 'wb') as f_out:
             await f_out.write(await file.read())
         homework.file_path = file_path
@@ -393,11 +409,18 @@ async def destroy_homework(homework_id: int, db: AsyncSession = Depends(get_asyn
 async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
                           file: UploadFile | str = File(None),
                           db: AsyncSession = Depends(get_async_session), user: User = Depends(current_student_user)):
-    if not file and not content:
-        raise HTTPException(status_code=400, detail="Either file or content must be provided")
-    homework = await db.get(Homework, homework_id)
+    homework = await get_homework_or_none(homework_id, db, user)
     if not homework:
         raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
+
+    students_ids = get_group_students(homework.lesson.group)
+    if user.role != Role.ADMIN and user.role != Role.TEACHER and user.id not in students_ids:
+        raise HTTPException(status_code=403, detail="You are not allowed")
+    if not homework:
+        raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
+
+    if not file and not content:
+        raise HTTPException(status_code=400, detail="Either file or content must be provided")
 
     existing_submission_result = await db.execute(select(HomeworkSubmission).where(
         (HomeworkSubmission.homework_id == homework_id) & (HomeworkSubmission.student_id == user.id)))
@@ -407,12 +430,13 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
 
     file_path = None
     if file:
+
         os.makedirs(MEDIA_FOLDER, exist_ok=True)
         safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
         filename = f"{user.first_name}-{user.last_name}-{user.id}_{safe_datetime}_{file.filename}"
         file_path = os.path.join(MEDIA_FOLDER, filename)
-        with open(file_path, "wb") as f_out:
-            f_out.write(await file.read())
+        async with aiofiles.open(file_path, "wb") as f_out:
+            await f_out.write(await file.read())
 
     submission = HomeworkSubmission(
         homework_id=homework_id,
@@ -500,6 +524,8 @@ async def update_homework_submission(submission_id: int, content: Optional[str] 
     if content:
         submission.content = content
     if file:
+        if submission.file_path and os.path.exists(submission.file_path):
+            os.remove(submission.file_path)
         os.makedirs(MEDIA_FOLDER, exist_ok=True)
         safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
         filename = f"{user.id}_{safe_datetime}_{file.filename}"
