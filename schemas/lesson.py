@@ -67,9 +67,8 @@ class LessonBase(BaseModel):
     lesson_start: time
     lesson_end: time
     teacher_id: int
-    # group_id: int
+    group_id: int
     classroom_id: int
-
 
 
 class LessonCreate(LessonBase):
