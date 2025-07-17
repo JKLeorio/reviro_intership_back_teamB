@@ -265,17 +265,14 @@ async def get_homeworks_for_user(user_id, db: AsyncSession):
 #     return homeworks
 
 
-@homework_router.get("/{homework_id}", response_model=HomeworkRead,
-
-                     status_code=status.HTTP_200_OK)
+@homework_router.get("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
 async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_async_session),
                              user: User = Depends(current_teacher_user)):
+    if user.role not in (Role.TEACHER, Role.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
 
-    result = await db.execute(
-        select(Homework)
-        .where(Homework.id == homework_id)
-        .options(selectinload(Homework.submissions))
-    )
+    result = await db.execute(select(Homework).where(Homework.id == homework_id)
+                              .options(selectinload(Homework.submissions)))
 
     homework = result.scalar_one_or_none()
     if not homework:
@@ -339,6 +336,8 @@ async def download_submission(homework_id: int, db: AsyncSession = Depends(get_a
         raise HTTPException(status_code=403, detail="You are not allowed")
     if not homework:
         raise HTTPException(status_code=404, detail="Submission not found")
+    if user.id not in get_group_students(homework.lesson.group):
+        raise HTTPException(status_code=403, detail="You are not allowed")
     if not homework.file_path:
         raise HTTPException(status_code=404, detail="No file attached")
 
@@ -472,7 +471,7 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
     return submission
 
 
-@homework_submission_router.get('/homework/{homework_id}', response_model=List[HomeworkSubmissionShort],
+@homework_submission_router.get('/homework/{homework_id}', response_model=List[HomeworkSubmissionRead],
                                 status_code=status.HTTP_200_OK)
 async def get_homework_submissions(homework_id: int, db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_teacher_user)):
@@ -483,8 +482,30 @@ async def get_homework_submissions(homework_id: int, db: AsyncSession = Depends(
     if user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(status_code=403, detail="You don't have enough permissions")
 
-    submissions = await db.execute(select(HomeworkSubmission).where(HomeworkSubmission.homework_id == homework_id))
+    submissions = await db.execute(select(HomeworkSubmission).where(HomeworkSubmission.homework_id == homework_id)
+                                   .options(selectinload(HomeworkSubmission.review)))
     return submissions.scalars().all()
+
+
+@homework_submission_router.get('/homework/{homework_id}/my_submission', response_model=HomeworkSubmissionRead,
+                                status_code=status.HTTP_200_OK)
+async def get_my_homework_submission(homework_id: int, db: AsyncSession = Depends(get_async_session),
+                                     user: User = Depends(current_student_user)):
+    homework = await get_homework_or_none(homework_id, db, user)
+    if not homework:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    if user.id not in get_group_students(homework.lesson.group):
+        raise HTTPException(status_code=403, detail="You are not allowed")
+    result = await db.execute(
+        select(HomeworkSubmission)
+        .where(
+            HomeworkSubmission.homework_id == homework_id,
+            HomeworkSubmission.student_id == user.id
+        )
+        .options(selectinload(HomeworkSubmission.review))
+    )
+    submission = result.scalar_one_or_none()
+    return submission
 
 
 async def get_homework_submission_or_none(submission_id, db):
