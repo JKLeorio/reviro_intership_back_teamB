@@ -80,6 +80,7 @@ def format_shedule(groups_lessons: Sequence[Group]) -> Dict:
                 'lessons' : lessons
                 }
             )
+        buff_dict.clear()
 
     return result_dict
 
