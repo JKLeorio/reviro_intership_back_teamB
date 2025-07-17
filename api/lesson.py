@@ -18,7 +18,7 @@ from models.user import User
 
 from schemas.lesson import (
     LessonRead, LessonCreate, LessonUpdate, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
-    HomeworkCreate, HomeworkUpdate, HomeworkSubmissionRead, HomeworkReviewCreate, HomeworkReviewRead, HomeworkReviewBase,
+    HomeworkSubmissionRead, HomeworkReviewCreate, HomeworkReviewRead, HomeworkReviewBase,
     HomeworkReviewUpdate, HomeworkSubmissionShort
 )
 
@@ -302,8 +302,7 @@ async def create_homework(lesson_id: int, deadline: datetime = Form(),
     file_path = None
     if file:
         os.makedirs(HOMEWORK_FOLDER, exist_ok=True)
-        safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
-        filename = f"{lesson.name}-{lesson_id}_{safe_datetime}_{file.filename}"
+        filename = f"{lesson.name}_{file.filename}"
         file_path = os.path.join(HOMEWORK_FOLDER, filename)
         async with aiofiles.open(file_path, 'wb') as f_out:
             await f_out.write(await file.read())
@@ -322,14 +321,10 @@ async def create_homework(lesson_id: int, deadline: datetime = Form(),
 
 
 async def get_homework_or_none(homework_id, db, user):
-    result = await db.execute(select(Homework)
-    .where(Homework.id == homework_id)
-    .options(
-        selectinload(Homework.lesson)
-        .selectinload(Lesson.group)
-        .selectinload(Group.students)
-    )
-    )
+    result = await db.execute(select(Homework).where(Homework.id == homework_id).options(selectinload(Homework.lesson)
+                                                                                         .selectinload(Lesson.group)
+                                                                                         .selectinload(Group.students)
+                                                                                         ))
     homework = result.scalar_one_or_none()
     return homework
 
@@ -338,7 +333,7 @@ async def get_homework_or_none(homework_id, db, user):
 async def download_submission(homework_id: int, db: AsyncSession = Depends(get_async_session),
                               user: User = Depends(current_student_user)):
     homework = await get_homework_or_none(homework_id, db, user)
-    if user.id not in get_group_students(homework.lesson.group):
+    if user.role not in (Role.ADMIN, Role.TEACHER) and user.id not in get_group_students(homework.lesson.group):
         raise HTTPException(status_code=403, detail="You are not allowed")
     if not homework:
         raise HTTPException(status_code=404, detail="Submission not found")
@@ -372,8 +367,7 @@ async def update_homework(homework_id: int, deadline: datetime = Form(),
         if homework.file_path and os.path.exists(homework.file_path):
             os.remove(homework.file_path)
         os.makedirs(HOMEWORK_FOLDER, exist_ok=True)
-        safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
-        filename = f"{homework_id}_{safe_datetime}_{file.filename}"
+        filename = f"{homework_id}_{file.filename}"
         file_path = os.path.join(HOMEWORK_FOLDER, filename)
         async with aiofiles.open(file_path, 'wb') as f_out:
             await f_out.write(await file.read())
@@ -383,6 +377,29 @@ async def update_homework(homework_id: int, deadline: datetime = Form(),
     await db.refresh(homework)
 
     return homework
+
+
+@homework_router.patch('/{homework_id}/remove-file', status_code=status.HTTP_200_OK)
+async def remove_file_from_homework(homework_id: int, db: AsyncSession = Depends(get_async_session),
+                              user: User = Depends(current_teacher_user)):
+    result = await db.execute(select(Homework).where(Homework.id == homework_id)
+                              .options(selectinload(Homework.lesson)))
+    homework = result.scalar_one_or_none()
+    if not homework:
+        raise HTTPException(status_code=404, detail="Homework not found")
+    if user.id != homework.lesson.teacher_id and user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if homework.file_path and os.path.exists(homework.file_path):
+        try:
+            os.remove(homework.file_path)
+        except:
+            pass
+    homework.file_path = None
+
+    await db.commit()
+    await db.refresh(homework)
+    return {"detail": f"File removed from homework with id {homework_id}"}
+
 
 
 @homework_router.delete("/{homework_id}", status_code=status.HTTP_200_OK)
@@ -432,8 +449,7 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
     if file:
 
         os.makedirs(MEDIA_FOLDER, exist_ok=True)
-        safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
-        filename = f"{user.first_name}-{user.last_name}-{user.id}_{safe_datetime}_{file.filename}"
+        filename = f"{user.first_name}-{user.last_name}_{file.filename}"
         file_path = os.path.join(MEDIA_FOLDER, filename)
         async with aiofiles.open(file_path, "wb") as f_out:
             await f_out.write(await file.read())
@@ -501,17 +517,13 @@ async def get_homework_submission(submission_id: int, request: Request,
 
     if user.id != submission.student_id and user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
-    download_url = None
-    if submission.file_path:
-        download_url = str(request.url_for("download_submission", submission_id=submission_id))
-    submission.file_path = download_url
     return submission
 
 
 @homework_submission_router.patch('/{submission_id}', response_model=HomeworkSubmissionShort,
                                   status_code=status.HTTP_200_OK)
 async def update_homework_submission(submission_id: int, content: Optional[str] = None,
-                                     file: UploadFile | str = File(None),
+                                     file: UploadFile | str | None = File(None),
                                      db: AsyncSession = Depends(get_async_session),
                                      user: User = Depends(current_student_user)):
     submission = await get_homework_submission_or_none(submission_id, db)
@@ -527,8 +539,7 @@ async def update_homework_submission(submission_id: int, content: Optional[str] 
         if submission.file_path and os.path.exists(submission.file_path):
             os.remove(submission.file_path)
         os.makedirs(MEDIA_FOLDER, exist_ok=True)
-        safe_datetime = datetime.now(timezone.utc).isoformat().replace(':', '_')
-        filename = f"{user.id}_{safe_datetime}_{file.filename}"
+        filename = f"{user.id}_{file.filename}"
         file_path = os.path.join(MEDIA_FOLDER, filename)
         async with aiofiles.open(file_path, 'wb') as f_out:
             await f_out.write(await file.read())
@@ -538,6 +549,26 @@ async def update_homework_submission(submission_id: int, content: Optional[str] 
     await db.refresh(submission)
 
     return submission
+
+
+@homework_submission_router.patch('/{submission_id}/remove-file', status_code=status.HTTP_200_OK)
+async def remove_file_from_submission(submission_id: int, db: AsyncSession = Depends(get_async_session),
+                                      user: User = Depends(current_student_user)):
+    result = await db.execute(select(HomeworkSubmission).where(HomeworkSubmission.id == submission_id))
+    submission = result.scalar_one_or_none()
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    if user.role != Role.ADMIN and user.id != submission.student_id:
+        raise HTTPException(status_code=403, detail="You don't have enough permissions")
+    if submission.file_path and os.path.exists(submission.file_path):
+        try:
+            os.remove(submission.file_path)
+        except:
+            pass
+    submission.file_path = None
+    await db.commit()
+    await db.refresh(submission)
+    return {"detail": f"File removed from submission with id {submission_id}"}
 
 
 @homework_submission_router.delete('/{submission_id}', status_code=status.HTTP_200_OK)
