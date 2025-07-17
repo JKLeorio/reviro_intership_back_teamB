@@ -266,7 +266,7 @@ async def get_homeworks_for_user(user_id, db: AsyncSession):
 
 @homework_router.get("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
 async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_async_session),
-                             user: User = Depends(current_student_user)):
+                             user: User = Depends(current_teacher_user)):
     if user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
 
