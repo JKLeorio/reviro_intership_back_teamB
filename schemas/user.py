@@ -31,7 +31,8 @@ class UserCreate(schemas.BaseUserCreate):
 
 
 class UserResponse(UserBase):
-    pass
+    #временно
+    password: Optional[str] = None
 
 class UserRegister(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
