@@ -4,16 +4,6 @@ from pydantic import BaseModel, model_validator, ConfigDict, HttpUrl
 from fastapi import UploadFile, File
 
 
-def validate_time_func(values: dict):
-    start = values.get('lesson_start')
-    end = values.get('lesson_end')
-
-    if start and end and start >= end:
-        raise ValueError('lesson_start must be before lesson_end')
-
-    return values
-
-
 class ClassroomBase(BaseModel):
     name: str
 
@@ -60,6 +50,7 @@ class LessonShort(BaseModel):
 
 
 class LessonBase(BaseModel):
+    id: int
     name: str
     description: str
     link: Optional[HttpUrl] = None
@@ -67,16 +58,25 @@ class LessonBase(BaseModel):
     lesson_start: time
     lesson_end: time
     teacher_id: int
-    # group_id: int
+    group_id: int
     classroom_id: int
 
 
+class LessonCreate(BaseModel):
+    name: str
+    description: str
+    link: Optional[HttpUrl] = None
+    day: date
+    lesson_start: time
+    lesson_end: time
+    teacher_id: int
+    classroom_id: int
 
-class LessonCreate(LessonBase):
-    @model_validator(mode='before')
-    @classmethod
-    def validate_time(cls, values):
-        return validate_time_func(values)
+    @model_validator(mode='after')
+    def validate_time(self) -> 'LessonCreate':
+        if self.lesson_start >= self.lesson_end:
+            raise ValueError('lesson_start must be before lesson_end')
+        return self
 
 
 class LessonUpdate(BaseModel):
@@ -90,10 +90,14 @@ class LessonUpdate(BaseModel):
     group_id: Optional[int] = None
     classroom_id: Optional[int] = None
 
-    @model_validator(mode='before')
-    @classmethod
-    def validate_time(cls, values):
-        return validate_time_func(values)
+    @model_validator(mode='after')
+    def validate_time(self):
+        if self.lesson_start and self.lesson_end:
+            start = self.lesson_start.replace(tzinfo=None)
+            end = self.lesson_end.replace(tzinfo=None)
+            if start >= end:
+                raise ValueError('lesson_start must be before lesson_end')
+        return self
 
     model_config = ConfigDict(from_attributes=True)
 
