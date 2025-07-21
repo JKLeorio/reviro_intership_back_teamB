@@ -17,6 +17,7 @@ from models.payment import Payment, Subscription
 from models.user import User
 
 from api.auth import current_admin_user
+from api.utils import validate_related_fields
 
 from db.database import get_async_session
 
@@ -56,14 +57,6 @@ class PaymentFilter(Filter):
         model = Payment
 
 
-async def validate_related_fields(models_ids: Dict[Base, int], session: AsyncSession):
-    for model, m_id in models_ids.items():
-        if not await session.get(model, m_id):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={'detail':f'{model.__name__} not found'}
-                )
-    return
 
 
 @subscription_router.get(
