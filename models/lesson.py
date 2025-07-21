@@ -3,8 +3,8 @@ from typing import List, TYPE_CHECKING, Optional
 
 from pydantic import HttpUrl
 from db.dbbase import Base
-from db.types import HttpUrlType
-from sqlalchemy import String, DateTime, ForeignKey, Text, Date, Time
+from db.types import AttendanceStatus, HttpUrlType
+from sqlalchemy import Enum, String, DateTime, ForeignKey, Text, Date, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.user import User
@@ -112,3 +112,21 @@ class HomeworkReview(Base):
 
     submission = relationship('HomeworkSubmission', back_populates='review', passive_deletes=True)
     teacher = relationship('User')
+
+
+class Attendance(Base):
+    __tablename__ = 'attendances'
+    
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    status: Mapped[AttendanceStatus] = mapped_column(Enum(AttendanceStatus), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
+    lesson_id: Mapped[int] = mapped_column(ForeignKey("lessons.id", ondelete='CASCADE'))
+    student: Mapped["User"] = relationship(
+        "User", 
+        back_populates="attendance"
+        )
+    lesson: Mapped["Lesson"] = relationship(
+        "Lesson", 
+        back_populates="attendance"
+        )

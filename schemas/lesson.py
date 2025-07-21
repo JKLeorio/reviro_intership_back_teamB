@@ -3,6 +3,8 @@ from typing import Optional, List
 from pydantic import BaseModel, model_validator, ConfigDict, HttpUrl
 from fastapi import UploadFile, File
 
+from db.types import AttendanceStatus
+
 
 class ClassroomBase(BaseModel):
     name: str
@@ -183,3 +185,30 @@ class HomeworkReviewBase(BaseModel):
 
 class HomeworkReviewUpdate(HomeworkReviewBase):
     pass
+
+
+
+class AttendanceBase(BaseModel):
+    id: int
+    status: AttendanceStatus
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class AttendanceResponse(AttendanceBase):
+    student_id: int
+    lesson_id: int
+
+
+class AttendanceCreate(BaseModel):
+    status: AttendanceStatus
+    student_id: int
+    lesson_id: int
+
+class AttendanceUpdate(AttendanceCreate):
+    pass
+
+class AttendancePartialUpdate(AttendanceCreate):
+    status: Optional[AttendanceStatus] = None
+    student_id: Optional[int] = None
+    lesson_id: Optional[int] = None
