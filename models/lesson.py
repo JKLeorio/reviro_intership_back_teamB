@@ -55,6 +55,8 @@ class Lesson(Base):
 
     homework: Mapped["Homework"] = relationship(back_populates='lesson', cascade='all, delete-orphan',
                                                 passive_deletes=True)
+    
+    attendance: Mapped[list["Attendance"]] = relationship(back_populates="lesson")
 
     @property
     def group_name(self) -> str | None:

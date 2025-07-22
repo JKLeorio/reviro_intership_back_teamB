@@ -4,6 +4,8 @@ from pydantic import BaseModel, model_validator, ConfigDict, HttpUrl
 from fastapi import UploadFile, File
 
 from db.types import AttendanceStatus
+from schemas.group import GroupBase
+from schemas.pagination import Pagination
 
 
 class ClassroomBase(BaseModel):
@@ -62,6 +64,8 @@ class LessonBase(BaseModel):
     teacher_id: int
     group_id: int
     classroom_id: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LessonCreate(BaseModel):
@@ -192,13 +196,45 @@ class AttendanceBase(BaseModel):
     id: int
     status: AttendanceStatus
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
+
 
 class AttendanceResponse(AttendanceBase):
     student_id: int
     lesson_id: int
 
+
+class AttendanceLesson(BaseModel):
+    id: int
+    name: str
+    day: date
+    lesson_start: time
+    lesson_end: time
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AttendanceGroup(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+    
+
+class AttendanceItem(BaseModel):
+    id: int
+    status: AttendanceStatus
+    created_at: datetime
+    student_id: int
+    lesson: AttendanceLesson
+
+class AttendanceWithGroup(BaseModel):
+    group: AttendanceGroup
+    attendance: list[AttendanceItem]
+
+class UserAttendanceResponse(BaseModel):
+    attendance_groups: list[AttendanceWithGroup]
+    pagination: Pagination
 
 class AttendanceCreate(BaseModel):
     status: AttendanceStatus
