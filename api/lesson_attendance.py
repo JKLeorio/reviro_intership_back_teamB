@@ -1,8 +1,11 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from collections import defaultdict
+from math import ceil
+from typing import Annotated, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_filter.base.filter import FilterDepends
@@ -13,9 +16,22 @@ from api.auth import current_teacher_user
 from db.types import AttendanceStatus, Role
 from models.user import User
 from models.lesson import Attendance, Lesson
-from schemas.lesson import AttendanceCreate, AttendancePartialUpdate, AttendanceResponse, AttendanceUpdate
+from schemas.group import GroupBase
+from schemas.lesson import (
+    AttendanceCreate, 
+    AttendanceGroup, 
+    AttendanceItem, 
+    AttendanceLesson, 
+    AttendancePartialUpdate, 
+    AttendanceResponse, 
+    AttendanceUpdate,
+    AttendanceWithGroup, 
+    LessonBase, 
+    UserAttendanceResponse
+    )
 
 from api.utils import validate_related_fields
+from schemas.pagination import Pagination
 
 attendance_router = APIRouter()
 
@@ -49,11 +65,13 @@ async def is_teacher_attendance_owner(
     return
 
 
+
 class AttendanceFilter(Filter):
-    status__in: Optional[list[AttendanceStatus]]
+    status__in: Optional[list[AttendanceStatus]] = None
 
     class Constants(Filter.Constants):
         model = Attendance
+
 
 
 # @attendance_router.get(
@@ -80,11 +98,13 @@ class AttendanceFilter(Filter):
 
 @attendance_router.get(
     '/student/{user_id}',
-    response_model=List[AttendanceResponse],
+    response_model=UserAttendanceResponse,
     status_code=status.HTTP_200_OK
 )
 async def attendance_by_user(
     user_id: int,
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=100)] = 20,
     attendance_filter: AttendanceFilter = FilterDepends(AttendanceFilter),
     user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
@@ -98,13 +118,60 @@ async def attendance_by_user(
 
     ADMIN -> has no restrictions
     '''
+    offset = (page-1)*size
+    user_item = await session.get(User, user_id)
+    if user_item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='user not found'
+            )
+
     stmt = (
         select(Attendance)
+        .options(
+            joinedload(Attendance.lesson).joinedload(Lesson.group)
+            )
         .where(Attendance.student_id == user_id)
+        .offset(offset=offset)
+        .limit(limit=size)
     )
+    total_stmt = select(func.count()).select_from(Attendance)
+    total_items = (await session.execute(total_stmt)).scalar_one()
+
+    total_pages = ceil(total_items / size) if total_items else 1
+
+    if page > total_pages:
+        page = total_pages
+
+    attendance_dict = defaultdict(list)
+
     filter_stmt = attendance_filter.filter(stmt)
     result = await session.execute(filter_stmt)
-    attendance = result.scalars().all()
+    attendance_items = result.scalars().all()
+
+    for item in attendance_items:
+        attendance_dict[item.lesson.group].append(
+            AttendanceItem(
+                id=item.id,
+                status=item.status,
+                created_at=item.created_at,
+                student_id=item.student_id,
+                lesson=AttendanceLesson.model_validate(item.lesson)
+            )
+        )
+    attendance = UserAttendanceResponse(
+            attendance_groups = [
+                AttendanceWithGroup(
+                    group=AttendanceGroup.model_validate(group),
+                    attendance=attendance_list
+                ) for group, attendance_list in attendance_dict.items()
+            ],
+            pagination = Pagination(
+                current_page_size=size,
+                current_page=page,
+                total_pages=total_pages
+                )
+    )
     return attendance
 
 
@@ -131,6 +198,11 @@ async def attendance_detail(
     #     is_teacher_attendance_owner(user.id, attendance_id, session)
 
     attendance = await session.get(Attendance, attendance_id)
+    if attendance is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=''
+            )
     return attendance
 
 
