@@ -39,6 +39,11 @@ class PaymentStatus(str, Enum):
     CANCELED = "canceled"
 
 
+class PaymentDetailStatus(str, Enum):
+    PAID = 'Оплачено'
+    UNPAID = 'Не оплачено'
+
+
 class PaymentMethod(str, Enum):
     CASH = "cash"
     CARD = "card"

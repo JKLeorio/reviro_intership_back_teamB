@@ -172,7 +172,7 @@ async def get_lesson_by_lesson_id(lesson_id: int, db: AsyncSession = Depends(get
     return lesson
 
 
-@lesson_router.post('/group/{group_id}/new_lesson', response_model=LessonBase, status_code=status.HTTP_201_CREATED)
+@lesson_router.post('/group/{group_id}', response_model=LessonBase, status_code=status.HTTP_201_CREATED)
 async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_teacher_user)):
     '''
