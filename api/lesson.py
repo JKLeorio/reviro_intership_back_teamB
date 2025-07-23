@@ -10,10 +10,10 @@ from sqlalchemy.orm import selectinload
 
 
 from api.auth import current_student_user, current_teacher_user, current_admin_user
-from db.types import Role
+from db.types import AttendanceStatus, Role
 
 from models.group import Group
-from models.lesson import Lesson, Classroom, Homework, HomeworkSubmission, HomeworkReview
+from models.lesson import Attendance, Lesson, Classroom, Homework, HomeworkSubmission, HomeworkReview
 from models.user import User
 
 from schemas.lesson import (
@@ -187,14 +187,36 @@ async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSessi
     new_lesson_data['group_id'] = group_id
     # new_lesson_data['teacher_id'] = user.id
     new_lesson = Lesson(**new_lesson_data)
+
     db.add(new_lesson)
+    await db.flush()
+    await db.refresh(
+        new_lesson
+        )
+    
+    students = await new_lesson.group.awaitable_attrs.students
+    for student in students:
+        db.add(Attendance(
+                status=AttendanceStatus.ABSENT,
+                student_id=student.id,
+                lesson_id=new_lesson.id
+                )
+            )
     await db.commit()
-    await db.refresh(new_lesson)
-    new_lesson = await db.execute(select(Lesson).options(selectinload(Lesson.group),
-                                                         selectinload(Lesson.classroom),
-                                                         selectinload(Lesson.homework))
-                                  .where(Lesson.id == new_lesson.id))
-    return new_lesson.scalar_one()
+    # new_lesson = await db.execute(select(Lesson).options(selectinload(Lesson.group),
+    #                                                      selectinload(Lesson.classroom),
+    #                                                      selectinload(Lesson.homework))
+    #                               .where(Lesson.id == new_lesson.id))
+    # return new_lesson.scalar_one()
+    await db.refresh(
+        new_lesson,
+        attribute_names=[
+            'group',
+            'classroom',
+            'homework'
+        ]
+    )
+    return new_lesson
 
 
 @lesson_router.patch('/{lesson_id}', response_model=LessonBase, status_code=status.HTTP_200_OK)
