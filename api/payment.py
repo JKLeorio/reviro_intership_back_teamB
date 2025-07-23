@@ -19,11 +19,13 @@ from models.course import Course
 from models.group import Group
 from models.payment import Payment, PaymentDetail, Subscription
 from models.user import User
+
 from schemas.payment import (PaymentCreate, PaymentDetailBase, PaymentDetailUpdate,
                              PaymentDetailRead, PaymentPartialUpdate,
                              PaymentResponse, PaymentUpdate,
                              SubscriptionCreate, SubscriptionPartialUpdate,
                              SubscriptionResponse, SubscriptionUpdate)
+
 
 subscription_router = routing.APIRouter()
 payment_router = routing.APIRouter()
@@ -58,6 +60,7 @@ async def validate_related_fields(models_ids: Dict[Base, int], session: AsyncSes
                 detail={"detail": f"{model.__name__} not found"},
             )
     return
+
 
 
 @subscription_router.get(
