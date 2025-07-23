@@ -125,7 +125,11 @@ class Attendance(Base):
     __tablename__ = 'attendances'
     
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    status: Mapped[AttendanceStatus] = mapped_column(Enum(AttendanceStatus), nullable=False)
+    status: Mapped[AttendanceStatus] = mapped_column(
+        Enum(AttendanceStatus),
+        nullable=False, 
+        default=AttendanceStatus.ABSENT
+        )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
     updated_at = mapped_column(DateTime(timezone=True), default=get_current_time, onupdate=get_current_time)
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))

@@ -241,7 +241,7 @@ class UserAttendanceResponse(BaseModel):
     pagination: Pagination
 
 class AttendanceCreate(BaseModel):
-    status: AttendanceStatus
+    status: AttendanceStatus = AttendanceStatus.ABSENT
     student_id: int
     lesson_id: int
 
