@@ -83,11 +83,15 @@ SubscriptionResponse.model_rebuild()
 
 
 class PaymentDetailBase(BaseModel):
+    id: int
     student_id: int
     group_id: int
-    course_id: int
-    joined_at: Optional[date] = None
-    months_paid: Optional[int] = 1
+    group_name: str
+    group_end: date
+    deadline: date
+    status: PaymentDetailStatus
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaymentDetailCreate(PaymentDetailBase):
