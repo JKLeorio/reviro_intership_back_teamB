@@ -3,7 +3,9 @@ from .group import Group
 from .course import Course, Level, Language
 from .lesson import Lesson, Homework, Classroom, Attendance
 from .enrollment import Enrollment
-from .payment import Payment, PaymentDetail
+from .payment import PaymentDetail, Payment
 
-__all__ = ["User", "Group", "Course", "Level", "Language", "Lesson", "Homework", "Classroom", "Enrollment",
-           "PaymentDetail", "Attendance"]
+
+__all__ = ["User", "Group", "Course", "Level", "Language", "Lesson", "Homework", "Classroom", "Enrollment", "Payment",
+           "Attendance", "PaymentDetail"]
+
