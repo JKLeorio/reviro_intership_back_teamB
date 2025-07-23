@@ -6,6 +6,7 @@ from fastapi import UploadFile, File
 from db.types import AttendanceStatus
 from schemas.group import GroupBase
 from schemas.pagination import Pagination
+from schemas.user import UserBase
 
 
 class ClassroomBase(BaseModel):
@@ -42,6 +43,7 @@ class LessonRead(BaseModel):
     group_name: Optional[str] = None
     classroom_name: Optional[str] = None
     created_at: datetime
+    passed: bool
 
     homework: Optional['HomeworkBase']
 
@@ -64,7 +66,7 @@ class LessonBase(BaseModel):
     teacher_id: int
     group_id: int
     classroom_id: int
-    
+    passed: bool
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -77,6 +79,7 @@ class LessonCreate(BaseModel):
     lesson_end: time
     teacher_id: int
     classroom_id: int
+    passed: bool = False
 
     @model_validator(mode='after')
     def validate_time(self) -> 'LessonCreate':
@@ -95,6 +98,7 @@ class LessonUpdate(BaseModel):
     teacher_id: Optional[int] = None
     group_id: Optional[int] = None
     classroom_id: Optional[int] = None
+    passed: Optional[bool] = False
 
     @model_validator(mode='after')
     def validate_time(self):
@@ -200,7 +204,7 @@ class AttendanceBase(BaseModel):
 
 
 class AttendanceResponse(AttendanceBase):
-    student_id: int
+    student: UserBase
     lesson_id: int
 
 

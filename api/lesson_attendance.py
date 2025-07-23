@@ -128,10 +128,15 @@ async def attendance_by_user(
 
     stmt = (
         select(Attendance)
+        .join(Attendance.lesson)
+        .join(Lesson.group)
         .options(
             joinedload(Attendance.lesson).joinedload(Lesson.group)
             )
-        .where(Attendance.student_id == user_id)
+        .where(
+            Lesson.passed.is_(True),
+            Attendance.student_id == user_id
+            )
         .offset(offset=offset)
         .limit(limit=size)
     )
@@ -201,7 +206,7 @@ async def attendance_detail(
     if attendance is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=''
+            detail='attendance not found'
             )
     return attendance
 
@@ -222,10 +227,20 @@ async def attendance_create(
 
     ROLES: teacher or admin
 
-    TEACHER -> can update the attendance of only those lessons where he is the teacher
+    TEACHER -> can create the attendance of only those lessons where he is the teacher
 
     ADMIN -> has no restrictions
     '''
+    smtm = select(Attendance).where(
+            Attendance.student_id == attendance_data.student_id,
+            Attendance.lesson_id == attendance_data.lesson_id
+        )
+    result = await session.execute(smtm)
+    if result.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='attendance exists'
+        )
     await validate_related_fields(
         {
             User : attendance_data.student_id,
@@ -367,6 +382,7 @@ async def attendance_delete(
             detail='attendance not found'
             )
     await session.delete(attendance)
+    await session.commit()
     return
 
 # @attendance_router.get(
@@ -380,6 +396,43 @@ async def attendance_delete(
 #     session: AsyncSession = Depends(get_async_session)
 # ):
 #     '''
-#     RETURNS student attendance in a group by group_id
+#     RETURNS students attendance in a group by group_id
 #     '''
 #     pass
+
+@attendance_router.get(
+    '/lesson/{lesson_id}',
+    response_model=List[AttendanceResponse],
+    status_code=status.HTTP_200_OK
+)
+async def user_attendance_by_lesson(
+    lesson_id: int,
+    user: User = Depends(current_teacher_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    '''
+    RETURNS students attendance in a group by group_id
+
+    ROLES: teacher or admin
+
+    TEACHER -> has no restrictions
+
+    ADMIN -> has no restrictions
+    '''
+    
+    group = await session.get(Lesson, lesson_id)
+    if group is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='lesson not found'
+            )
+    stmt = (
+        select(Attendance)
+        .options(
+            joinedload(Attendance.lesson),
+            joinedload(Attendance.student))
+        .where(Attendance.lesson_id == lesson_id)
+    )
+    result = await session.execute(stmt)
+    attendance = result.scalars().all()
+    return attendance

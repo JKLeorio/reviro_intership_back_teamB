@@ -4,7 +4,7 @@ from typing import List, TYPE_CHECKING, Optional
 from pydantic import HttpUrl
 from db.dbbase import Base
 from db.types import AttendanceStatus, HttpUrlType
-from sqlalchemy import Enum, String, DateTime, ForeignKey, Text, Date, Time
+from sqlalchemy import Enum, String, DateTime, ForeignKey, Text, Date, Time, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.user import User
@@ -43,6 +43,8 @@ class Lesson(Base):
     lesson_start: Mapped[time] = mapped_column(Time, nullable=False)
     lesson_end: Mapped[time] = mapped_column(Time, nullable=False)
 
+    passed: Mapped[bool] = mapped_column(Boolean, default=False)
+
     teacher_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
 
     group_id: Mapped[int] = mapped_column(ForeignKey('groups.id'))
@@ -56,7 +58,10 @@ class Lesson(Base):
     homework: Mapped["Homework"] = relationship(back_populates='lesson', cascade='all, delete-orphan',
                                                 passive_deletes=True)
     
-    attendance: Mapped[list["Attendance"]] = relationship(back_populates="lesson")
+    attendance: Mapped[list["Attendance"]] = relationship(
+        back_populates="lesson", 
+        cascade="all, delete-orphan"
+        )
 
     @property
     def group_name(self) -> str | None:
@@ -122,6 +127,7 @@ class Attendance(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     status: Mapped[AttendanceStatus] = mapped_column(Enum(AttendanceStatus), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
+    updated_at = mapped_column(DateTime(timezone=True), default=get_current_time, onupdate=get_current_time)
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
     lesson_id: Mapped[int] = mapped_column(ForeignKey("lessons.id", ondelete='CASCADE'))
     student: Mapped["User"] = relationship(
