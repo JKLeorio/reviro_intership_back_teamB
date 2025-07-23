@@ -45,6 +45,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     )
     lessons: Mapped[list["Lesson"]] = relationship(back_populates="teacher")
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="owner")
+
     payments = relationship('Payment', back_populates='owner')
     payment_details: Mapped[list["PaymentDetail"]] = relationship('PaymentDetail', back_populates='student')
     attendance: Mapped[list["Attendance"]] = relationship(back_populates="student")
