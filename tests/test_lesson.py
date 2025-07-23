@@ -137,7 +137,7 @@ async def test_create_lesson(client):
                    "lesson_start": "09:00", "lesson_end": "11:15", "teacher_id": teacher_id, "group_id": group_id,
                    "classroom_id": classroom_id}
 
-    lesson_response = await client.post(f'/lessons/group/{group_id}', json=lesson_data)
+    lesson_response = await client.post(f'/lessons/group/{group_id}/new_lesson', json=lesson_data)
     assert lesson_response.status_code == 201
     assert lesson_response.json()["group_id"] == group_id
     assert lesson_response.json()["teacher_id"] == teacher_id
@@ -152,7 +152,7 @@ async def test_create_lesson_by_teacher(client):
                    "lesson_start": "09:00", "lesson_end": "11:15", "teacher_id": 1, "group_id": 1,
                    "classroom_id": 4}
 
-    response = await client.post(f"/lessons/group/{lesson_data['group_id']}", json=lesson_data)
+    response = await client.post(f"/lessons/group/{lesson_data['group_id']}/new_lesson", json=lesson_data)
     assert response.status_code == 201
     assert response.json()['teacher_id'] == lesson_data['teacher_id']
 
@@ -164,7 +164,7 @@ async def test_create_lesson_by_student(client):
                    "lesson_start": "09:00", "lesson_end": "11:15", "teacher_id": 1, "group_id": 1,
                    "classroom_id": 4}
 
-    response = await client.post(f"/lessons/group/{lesson_data['group_id']}", json=lesson_data)
+    response = await client.post(f"/lessons/group/{lesson_data['group_id']}/new_lesson", json=lesson_data)
     assert response.status_code == 403
     assert response.json()['detail'] == "You don't have enough permissions"
 
