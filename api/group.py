@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime, date
 from fastapi import routing, HTTPException, Depends, status
 
 from sqlalchemy import select
@@ -13,6 +14,8 @@ from api.auth import (
     current_teacher_user,
     current_admin_user
     )
+from api.payment import create_initial_payment, inactivate_payment
+from models.payment import PaymentDetail
 from db.types import Role
 from models.user import User, student_group_association_table
 from models.group import Group
@@ -98,12 +101,13 @@ async def group_students_update(
     '''
     group = await session.get(Group, group_id, options=[
         selectinload(Group.students),
-        selectinload(Group.teacher)])
+        selectinload(Group.teacher), selectinload(Group.course)])
     if not group:
         raise HTTPException(
             detail={"detail" : "Group doesn't exists"},
             status_code=status.HTTP_404_NOT_FOUND
             )
+    old_student_ids = {student.id for student in group.students}
     result = await session.execute(select(User)
                                    .where(
                                        User.id.in_(group_update.students)
@@ -113,17 +117,24 @@ async def group_students_update(
     if len(students) != len(group_update.students):
         raise HTTPException(
             detail={
-                "detail" : "The request has a user id that does not exist"
+                "detail": "The request has a user id that does not exist"
                 },
                 status_code=status.HTTP_400_BAD_REQUEST
                 )
-    
-    print(group_update.model_dump())
+    new_student_ids = set(group_update.students) - old_student_ids
+
     for key, value in group_update.model_dump(exclude_unset=True).items():
         if key == "students":
             group.students = students
         else:
             setattr(group, key, value)
+
+    for student_id in new_student_ids:
+        await create_initial_payment(student_id, group_id, db=session)
+
+    deleted_student_ids = old_student_ids - set(group_update.students)
+    for student_id in deleted_student_ids:
+        await inactivate_payment(student_id, group_id, db=session)
 
     await session.commit()
     await session.refresh(
@@ -148,14 +159,25 @@ async def group_students_partial_update(
     Partial update group by group id from the submitted data with students fields
     NOTE -> students fields must contains ids
     '''
-    group = await session.get(Group, group_id, options=[
-        selectinload(Group.students),
-        selectinload(Group.teacher)])
+    result = await session.execute(
+        select(Group)
+        .options(
+            selectinload(Group.students),
+            selectinload(Group.teacher),
+            selectinload(Group.course)
+        )
+        .where(Group.id == group_id)
+    )
+    group = result.scalar_one_or_none()
+
     if not group:
         raise HTTPException(
             detail={"detail" : "Group doesn't exists"},
             status_code=status.HTTP_404_NOT_FOUND
             )
+
+    old_student_ids = {student.id for student in group.students}
+
     result = await session.execute(select(User)
                                    .where(
                                        User.id.in_(group_update.students)
@@ -169,12 +191,21 @@ async def group_students_partial_update(
                 },
                 status_code=status.HTTP_400_BAD_REQUEST
                 )
-    
+
+    new_student_ids = set(group_update.students) - old_student_ids
+
     for key, value in group_update.model_dump(exclude_unset=True).items():
         if key == "students":
             group.students = students
         else:
             setattr(group, key, value)
+
+    for student_id in new_student_ids:
+        await create_initial_payment(student_id, group_id, db=session)
+
+    deleted_student_ids = old_student_ids - set(group_update.students)
+    for student_id in deleted_student_ids:
+        await inactivate_payment(student_id, group_id, db=session)
 
 
     await session.commit()
@@ -183,8 +214,6 @@ async def group_students_partial_update(
         # attribute_names=['students', 'teacher']
         )
     return group
-
-
 
 
 @group_router.get("/", response_model=List[GroupResponse], status_code=status.HTTP_200_OK)
