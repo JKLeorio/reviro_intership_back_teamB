@@ -17,6 +17,7 @@ from api.group import group_students_router, group_router
 from api.user import user_router
 from api.payment import payment_router, subscription_router, payment_details, update_and_check_payments
 from api.shedule import shedule_router
+from api.lesson_attendance import attendance_router
 
 
 scheduler = AsyncIOScheduler()
@@ -53,6 +54,7 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 
 app.include_router(shedule_router, prefix='/shedule', tags=['Schedule'])
 app.include_router(authRouter, prefix="/auth", tags=["Auth"])
+app.include_router(attendance_router, prefix="/attendance", tags=["Attendance"])
 app.include_router(enrollment_router, prefix="/enrollment", tags=["Enrollments"])
 app.include_router(course_router, prefix="/courses", tags=["Courses"])
 app.include_router(language_router, prefix="/languages", tags=["Languages"])
