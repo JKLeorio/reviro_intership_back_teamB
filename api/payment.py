@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from api.auth import current_admin_user
+from api.auth import current_admin_user, current_user
 from db.database import get_async_session
 from db.dbbase import Base
 from db.types import (Currency, PaymentDetailStatus, PaymentMethod,
@@ -456,14 +456,26 @@ async def inactivate_payment(student_id: int, group_id: int, db: AsyncSession):
     return None
 
 
-@payment_details.get("/group/{group_id}", response_model=List[PaymentDetailRead], status_code=status.HTTP_200_OK)
-async def get_payments_detail_by_group_id(group_id: int, db: AsyncSession = Depends(get_async_session),
-                                          user: User = Depends(current_admin_user)):
-    result = await db.execute(
-        select(PaymentDetail).where(PaymentDetail.group_id == group_id)
-    )
-    payments = result.scalars().all()
-    return payments
+@payment_details.get("/payments", response_model=List[PaymentDetailRead], status_code=status.HTTP_200_OK)
+async def get_payments_detail(group_id: Optional[int] = Query(default=None),
+                              student_id: Optional[int] = Query(default=None),
+                              db: AsyncSession = Depends(get_async_session),
+                              user: User = Depends(current_admin_user)):
+    if (not group_id and not student_id) or (group_id and student_id):
+        raise HTTPException(status_code=400, detail="Should provide either student_id or group_id")
+    if group_id:
+        group_exists = await db.execute(select(Group.id).where(Group.id == group_id))
+        if not group_exists.scalars().first():
+            raise HTTPException(status_code=404, detail=f"Group with id={group_id} not found")
+        result = await db.execute(select(PaymentDetail).where(PaymentDetail.group_id == group_id))
+
+    else:
+        student_exists = await db.execute(select(User.id).where(User.id == student_id))
+        if not student_exists.scalars().first():
+            raise HTTPException(status_code=404, detail=f"Student with id={student_id} not found")
+        result = await db.execute(select(PaymentDetail).where(PaymentDetail.student_id == student_id))
+
+    return result.scalars().all()
 
 
 async def update_and_check_payments():
@@ -478,7 +490,8 @@ async def update_and_check_payments():
         )
         payments = result.scalars().all()
         for payment in payments:
-            if payment.joined_at + relativedelta(months=payment.current_month_number) <= date.today():
+            curr_date = payment.joined_at + relativedelta(months=payment.current_month_number)
+            if curr_date <= date.today() and curr_date < payment.group.end_date:
                 payment.current_month_number += 1
                 payment.status = (
                     PaymentDetailStatus.UNPAID
@@ -515,6 +528,25 @@ async def get_payment_detail_by_id(payment_id: Optional[int] = Query(default=Non
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     return payment
+
+
+@payment_details.get('/my_payments', response_model=List[PaymentDetailBase], status_code=status.HTTP_200_OK)
+async def my_payment_details(db: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
+    result = await db.execute(select(PaymentDetail).options(selectinload(PaymentDetail.group))
+                              .where(PaymentDetail.student_id == user.id))
+    payments = result.scalars().all()
+    return [
+        PaymentDetailBase(
+            id=p.id,
+            student_id=p.student_id,
+            group_id=p.group_id,
+            group_name=p.group.name if p.group else "",
+            group_end=p.group.end_date if p.group and p.group.end_date else "",
+            deadline=p.deadline,
+            status=p.status
+        )
+        for p in payments
+    ]
 
 
 @payment_details.patch('/', response_model=PaymentDetailRead, status_code=status.HTTP_200_OK)

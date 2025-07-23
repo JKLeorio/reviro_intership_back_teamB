@@ -36,6 +36,17 @@ async def create_test_payment(session: AsyncSession):
 async def test_get_payment_detail_by_id(client, create_test_payment):
     payment = create_test_payment
     response = await client.get(
+        f"/payment_details/payments/?group_id={payment.group_id}",
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+
+@pytest.mark.anyio
+async def test_get_payment_detail_by_id(client, create_test_payment):
+    payment = create_test_payment
+    response = await client.get(
         f"/payment_details/?payment_id={payment.id}",
     )
     assert response.status_code == 200
