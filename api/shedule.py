@@ -36,7 +36,7 @@ shedule_router = APIRouter()
 # current_calendar = calendar.Calendar()
 
 def get_week_start_end() -> List[datetime.datetime]:
-    current_time = get_current_time()
+    current_time = get_current_time().date()
     week_start = current_time - datetime.timedelta(
         days=current_time.weekday()
         )
@@ -80,6 +80,7 @@ def format_shedule(groups_lessons: Sequence[Group]) -> Dict:
                 'lessons' : lessons
                 }
             )
+        buff_dict.clear()
 
     return result_dict
 
@@ -119,6 +120,7 @@ async def get_global_shedule(session: AsyncSession):
     )
     result = await session.execute(stmt)
     groups_lessons = result.scalars().unique().all()
+
     return groups_lessons
 
 
@@ -278,17 +280,17 @@ async def shedule_user(
 
 
 @shedule_router.get(
-        '/user/{user_id}',
+        '/student/{user_id}',
         response_model=SheduleResponse,
         status_code=status.HTTP_200_OK
         )
-async def shedule_by_user(
+async def shedule_by_student(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user),
 ):
     '''
-    Returns user shedule by user id for current week
+    Returns student shedule by user id for current week
     '''
     request_user = await session.get(User, user_id)
     if request_user is None:

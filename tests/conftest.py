@@ -40,10 +40,10 @@ TestingSessionMaker = async_sessionmaker(
     test_engine
 )
 
+
 @pytest.fixture(scope='session')
 def anyio_backend():
     return "asyncio"
-
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -63,7 +63,7 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture(scope="function")
-def override_session_dependency(session: AsyncSession):
+async def override_session_dependency(session: AsyncSession):
     async def override_get_async_session():
         yield session
 
