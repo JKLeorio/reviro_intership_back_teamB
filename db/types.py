@@ -73,3 +73,8 @@ class HttpUrlType(TypeDecorator):
 
     def process_literal_param(self, value, dialect) -> str:
         return str(value)
+    
+
+class AttendanceStatus(str, Enum):
+    ATTENTED = 'attended'
+    ABSENT = 'absent'
