@@ -2,8 +2,8 @@ from typing import List
 from datetime import datetime, date
 from fastapi import routing, HTTPException, Depends, status
 
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload, joinedload, with_loader_criteria
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_async_session
@@ -16,25 +16,82 @@ from api.auth import (
     )
 from api.payment import create_initial_payment, inactivate_payment
 from models.payment import PaymentDetail
-from db.types import Role
+from db.types import AttendanceStatus, PaymentDetailStatus, Role
 from models.user import User, student_group_association_table
 from models.group import Group
 from models.course import Course
 from schemas.group import (
     GroupCreate, 
     GroupResponse,
-    GroupStundentPartialUpdate, 
+    GroupStudentDetailResponse,
+    GroupStundentPartialUpdate,
+    GroupTeacherProfileResponse, 
     GroupUpdate, 
     GroupPartialUpdate,
     GroupStudentResponse,
     GroupStudentUpdate
     )
+from schemas.user import StudentResponse
 
 
 group_router = routing.APIRouter()
 
 #Удаление студента из группы, добавление в группу и т.д
 group_students_router = routing.APIRouter()
+
+
+
+# @group_students_router.get(
+#         '/detail/{group_id}',
+#         response_model=List[GroupStudentDetailResponse],
+#         status_code=status.HTTP_200_OK
+# )
+# async def group_students_detail_list(
+#     group_id: int,
+#     user: User = Depends(current_teacher_user),
+#     session: AsyncSession = Depends(get_async_session)
+# ):
+#     '''
+#     Returns a list of students by group with student attendance, payment status
+
+#     ROLES -> teacher, admin
+
+#     '''
+#     group = await session.get(Group, group_id)
+#     stmt = (
+#         select(User)
+#         .join(User.groups_joined)
+#         .where(Group.id == group_id)
+#         .options(
+#             selectinload(User.payments),
+#             selectinload(User.attendance),
+#             with_loader_criteria(PaymentDetail, lambda p: (
+#                         (p.group_id == group_id)
+#                     )
+#                 )
+#             )
+#         )
+#     result = await session.execute(stmt)
+#     students = result.scalars().all()
+#     response = []
+#     for student in students:
+#         attendances = [a for a in user.attendance if a.group_id == group_id]
+#         total = len(attendances)
+#         present = sum(1 for a in attendances if a.status == AttendanceStatus.ATTENTED)
+#         percent = round(present / total * 100, 2) if total > 0 else 0.0
+#         response.append(
+#             GroupStudentDetailResponse(
+#                 student = StudentResponse(
+#                     id=student.id,
+#                     first_name=student.first_name,
+#                     last_name=student.last_name
+#                     )
+#                 ),
+#                 payment_status = student.payments[0].status,
+#                 attendance_ratio = percent
+#             )
+#     return response
+
 
 
 @group_students_router.get(
@@ -215,6 +272,43 @@ async def group_students_partial_update(
         )
     return group
 
+@group_router.get(
+        "/my", 
+        response_model=List[GroupTeacherProfileResponse], 
+        status_code=status.HTTP_200_OK
+)
+async def group_list_profile(
+    user: User = Depends(current_teacher_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    '''
+    Returns current teacher user groups
+
+    ROLES -> teacher 
+    '''
+    stmt = (
+        select(Group, func.count(User.id).label("student_count"))
+        .options(selectinload(Group.course))
+        .outerjoin(Group.students)
+        .where(Group.teacher_id == user.id)
+        .group_by(Group.id)
+        )
+    result = await session.execute(stmt)
+    group_rows = result.mappings().all()
+    response = []
+    for row in group_rows:
+        group = row['Group']
+        response.append(
+            GroupTeacherProfileResponse(
+                id=group.id,
+                name=group.name,
+                start_date=group.start_date,
+                end_date=group.end_date,
+                is_active=group.is_active,
+                student_count=row['student_count']
+            )
+        )
+    return response
 
 @group_router.get("/", response_model=List[GroupResponse], status_code=status.HTTP_200_OK)
 async def group_list(
