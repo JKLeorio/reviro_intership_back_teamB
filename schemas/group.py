@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
+from db.types import PaymentDetailStatus, PaymentStatus
 from schemas.course import CourseRead
 from schemas.user import StudentResponse, TeacherResponse, UserResponse
 
@@ -35,6 +36,15 @@ class GroupResponse(BaseModel):
     teacher_id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class GroupTeacherProfileResponse(BaseModel):
+    id: int
+    name: str
+    start_date: date
+    end_date: date
+    is_active: bool
+    student_count: int
 
 
 class GroupCreate(BaseModel):
@@ -71,3 +81,10 @@ class GroupStudentUpdate(GroupUpdate):
 
 class GroupStundentPartialUpdate(GroupPartialUpdate):
     students: Optional[List[int]]
+
+
+class GroupStudentDetailResponse(BaseModel):
+    student: StudentResponse
+    payment_status: PaymentDetailStatus
+    attendance_ratio: float
+    

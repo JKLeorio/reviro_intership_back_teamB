@@ -269,3 +269,11 @@ async def test_group_partial_update_permission(client):
 async def test_group_delete_permission(client):
     response = await client.delete(group_url+'0')
     assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.anyio
+async def test_group_profile(client):
+    response = await client.get(group_url+'my')
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert isinstance(data, list)
+    assert bool(data)
