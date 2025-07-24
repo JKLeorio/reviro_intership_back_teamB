@@ -58,7 +58,7 @@ current_user = fastapi_users.current_user()
 current_super_user = fastapi_users.current_user(superuser=True)
 current_admin_user = require_roles("admin")
 current_teacher_user = require_roles("teacher", "admin")
-current_student_user = require_roles("student", "teacher", "student")
+current_student_user = require_roles("student", "teacher")
 current_student_user = require_roles("student", "teacher", "admin")
 optional_current_user = fastapi_users.current_user(optional=True)
 
@@ -66,8 +66,6 @@ current_only_student_user = require_roles("student", "admin")
 
 auth_router_full = fastapi_users.get_auth_router(auth_backend)
 get_user_manager_context = contextlib.asynccontextmanager(get_user_manager)
-
-authRouter = APIRouter()
 
 for route in auth_router_full.routes:
     if route.path == "/login":
