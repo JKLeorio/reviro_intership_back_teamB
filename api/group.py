@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import routing, HTTPException, Depends, status
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +18,8 @@ from models.user import User, student_group_association_table
 from models.group import Group
 from models.course import Course
 from schemas.group import (
-    GroupCreate, 
+    GroupCreate,
+    GroupProfileResponse, 
     GroupResponse,
     GroupStundentPartialUpdate, 
     GroupUpdate, 
@@ -33,6 +34,45 @@ group_router = routing.APIRouter()
 #Удаление студента из группы, добавление в группу и т.д
 group_students_router = routing.APIRouter()
 
+
+@group_students_router.get(
+        "/my", 
+        response_model=List[GroupProfileResponse], 
+        status_code=status.HTTP_200_OK
+)
+async def group_list_profile(
+    user: User = Depends(current_teacher_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    '''
+    Returns current user groups
+
+    ROLES -> student 
+    '''
+    stmt = (
+        select(Group, func.count(User.id).label("student_count"))
+        .options(selectinload(Group.course))
+        .outerjoin(Group.students)
+        .where(Group.students.any(User.id == user.id))
+        .group_by(Group.id)
+        )
+
+    result = await session.execute(stmt)
+    group_rows = result.mappings().all()
+    response = []
+    for row in group_rows:
+        group = row['Group']
+        response.append(
+            GroupProfileResponse(
+                id=group.id,
+                name=group.name,
+                start_date=group.start_date,
+                end_date=group.end_date,
+                is_active=group.is_active,
+                student_count=row['student_count']
+            )
+        )
+    return response
 
 @group_students_router.get(
         '/',
@@ -330,3 +370,5 @@ async def group_delete(
     await session.delete(group)
     await session.commit()
     return
+
+    
