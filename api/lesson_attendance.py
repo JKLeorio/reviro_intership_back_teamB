@@ -101,7 +101,7 @@ class AttendanceFilter(Filter):
     response_model=UserAttendanceResponse,
     status_code=status.HTTP_200_OK
 )
-async def attendance_by_user(
+async def attendance_by_student(
     user_id: int,
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=100)] = 20,
@@ -110,7 +110,7 @@ async def attendance_by_user(
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    RETURNS user attendance by user_id 
+    RETURNS student attendance by user_id 
 
     ROLES: teacher or admin
 
@@ -202,7 +202,11 @@ async def attendance_detail(
     # if user.role == Role.TEACHER:
     #     is_teacher_attendance_owner(user.id, attendance_id, session)
 
-    attendance = await session.get(Attendance, attendance_id)
+    attendance = await session.get(
+        Attendance, 
+        attendance_id, 
+        options=[selectinload(Attendance.student)]
+        )
     if attendance is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
