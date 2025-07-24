@@ -71,3 +71,12 @@ class GroupStudentUpdate(GroupUpdate):
 
 class GroupStundentPartialUpdate(GroupPartialUpdate):
     students: Optional[List[int]]
+
+
+class GroupProfileResponse(BaseModel):
+    id: int
+    name: str
+    start_date: date
+    end_date: date
+    is_active: bool
+    student_count: int
