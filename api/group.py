@@ -1,6 +1,7 @@
-from typing import List
+from math import ceil
+from typing import Annotated, List
 from datetime import datetime, date
-from fastapi import routing, HTTPException, Depends, status
+from fastapi import Query, routing, HTTPException, Depends, status
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload, joinedload, with_loader_criteria
@@ -29,8 +30,10 @@ from schemas.group import (
     GroupUpdate, 
     GroupPartialUpdate,
     GroupStudentResponse,
-    GroupStudentUpdate
+    GroupStudentUpdate,
+    TeacherProfileGroup
     )
+from schemas.pagination import Pagination
 from schemas.user import StudentResponse
 
 
@@ -274,10 +277,12 @@ async def group_students_partial_update(
 
 @group_router.get(
         "/my", 
-        response_model=List[GroupTeacherProfileResponse], 
+        response_model=GroupTeacherProfileResponse, 
         status_code=status.HTTP_200_OK
 )
 async def group_list_profile(
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=100)] = 20,
     user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -286,28 +291,48 @@ async def group_list_profile(
 
     ROLES -> teacher 
     '''
+    offset = (page-1)*size
     stmt = (
         select(Group, func.count(User.id).label("student_count"))
         .options(selectinload(Group.course))
         .outerjoin(Group.students)
         .where(Group.teacher_id == user.id)
+        .limit(limit=size)
+        .offset(offset=offset)
         .group_by(Group.id)
         )
     result = await session.execute(stmt)
+    total_stmt = select(func.count()).select_from(Group).where(Group.teacher_id == user.id)
+    total_groups = (await session.execute(total_stmt)).scalar_one()
+
+    total_pages = ceil(total_groups / size) if total_groups else 1
+
+    if page > total_pages:
+        page = total_pages
+
     group_rows = result.mappings().all()
-    response = []
+    groups = []
     for row in group_rows:
         group = row['Group']
-        response.append(
-            GroupTeacherProfileResponse(
+        groups.append(
+            TeacherProfileGroup(
                 id=group.id,
                 name=group.name,
                 start_date=group.start_date,
                 end_date=group.end_date,
+                approximate_lesson_start=group.approximate_lesson_start,
                 is_active=group.is_active,
                 student_count=row['student_count']
             )
         )
+    response = {
+        'attendance' : groups,
+        'pagination' : Pagination(
+            current_page_size=size,
+            current_page=page,
+            total_pages=total_pages
+        )
+    }
     return response
 
 @group_router.get("/", response_model=List[GroupResponse], status_code=status.HTTP_200_OK)

@@ -1,7 +1,7 @@
-from datetime import datetime, date
+from datetime import datetime, date, time
 from typing import List
 from db.dbbase import Base
-from sqlalchemy import DateTime, String, ForeignKey, Date, Boolean
+from sqlalchemy import DateTime, String, ForeignKey, Date, Boolean, Time
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from utils.date_time_utils import get_current_time
 from models.lesson import Lesson
@@ -26,6 +26,8 @@ class Group(Base):
 
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    approximate_lesson_start: Mapped[time] = mapped_column(Time, nullable=False)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
