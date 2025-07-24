@@ -41,7 +41,7 @@ group_students_router = routing.APIRouter()
         status_code=status.HTTP_200_OK
 )
 async def group_list_profile(
-    user: User = Depends(current_teacher_user),
+    user: User = Depends(current_student_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
