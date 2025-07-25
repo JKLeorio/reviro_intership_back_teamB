@@ -49,6 +49,7 @@ GROUP_DATA = {
     # 'end_date': '2025-08-02',
     'start_date': current_date,
     'end_date': current_date + timedelta(days=30),
+    'approximate_lesson_start':time(hour=12),
     'is_active': False,
     'is_archived': False,
     'course_id': None,

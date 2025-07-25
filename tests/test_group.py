@@ -36,6 +36,7 @@ GROUP_CREATE = {
     'end_date': '2025-08-02',
     'is_active': False,
     'is_archived': False,
+    'approximate_lesson_start':'12:00:00',
     'course_id': None,
     'teacher_id': None,
 }
@@ -47,6 +48,7 @@ GROUP_UPDATE = {
     'is_active': True,
     'is_archived': False,
     'course_id': None,
+    'approximate_lesson_start':'12:00:00',
     'teacher_id': None,
 }
 
@@ -59,6 +61,7 @@ GROUP_STUDENT_UPDATE = {
     'name': 'group 2',
     'start_date': '2026-07-02',
     'end_date': '2026-08-02',
+    'approximate_lesson_start':'12:00:00',
     'is_active': True,
     'is_archived': False,
     'course_id': None,
@@ -275,5 +278,4 @@ async def test_group_profile(client):
     response = await client.get(group_url+'my')
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert isinstance(data, list)
-    assert bool(data)
+    assert bool(data['pagination'])
