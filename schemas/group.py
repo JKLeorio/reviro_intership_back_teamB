@@ -41,7 +41,7 @@ class GroupResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class TeacherProfileGroup(BaseModel):
+class ProfileGroup(BaseModel):
     id: int
     name: str
     start_date: date
@@ -50,8 +50,8 @@ class TeacherProfileGroup(BaseModel):
     is_active: bool
     student_count: int
 
-class GroupTeacherProfileResponse(BaseModel):
-    attendance: list[TeacherProfileGroup]
+class GroupProfileResponse(BaseModel):
+    groups: list[ProfileGroup]
     pagination: Pagination
 
 class GroupCreate(BaseModel):

@@ -333,7 +333,7 @@ async def group_list_profile(
                 name=group.name,
                 start_date=group.start_date,
                 end_date=group.end_date,
-                # approximate_lesson_start=group.approximate_lesson_start,
+                approximate_lesson_start=group.approximate_lesson_start,
                 is_active=group.is_active,
                 student_count=row['student_count']
             )
