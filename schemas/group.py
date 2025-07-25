@@ -1,9 +1,10 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 from db.types import PaymentDetailStatus, PaymentStatus
 from schemas.course import CourseRead
+from schemas.pagination import Pagination
 from schemas.user import StudentResponse, TeacherResponse, UserResponse
 
 
@@ -13,6 +14,7 @@ class GroupBase(BaseModel):
     created_at: datetime
     start_date: date
     end_date: date
+    approximate_lesson_start: time
     is_active: bool
     is_archived: bool
     course_id: int
@@ -27,6 +29,7 @@ class GroupResponse(BaseModel):
     created_at: datetime
     start_date: date
     end_date: date
+    approximate_lesson_start: time
     is_active: bool
     is_archived: bool
     # временно
@@ -38,19 +41,24 @@ class GroupResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class GroupTeacherProfileResponse(BaseModel):
+class TeacherProfileGroup(BaseModel):
     id: int
     name: str
     start_date: date
     end_date: date
+    approximate_lesson_start: time
     is_active: bool
     student_count: int
 
+class GroupTeacherProfileResponse(BaseModel):
+    attendance: list[TeacherProfileGroup]
+    pagination: Pagination
 
 class GroupCreate(BaseModel):
     name: str
     start_date: date
     end_date: date
+    approximate_lesson_start: time
     is_active: bool
     is_archived: bool
     course_id: int
@@ -67,6 +75,7 @@ class GroupPartialUpdate(BaseModel):
     end_date: Optional[date] = None
     is_active: Optional[bool] = None
     is_archived: Optional[bool] = None
+    approximate_lesson_start: Optional[time] = None
     course_id: Optional[int] = None
     teacher_id: Optional[int] = None
 

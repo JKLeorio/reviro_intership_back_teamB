@@ -1,5 +1,5 @@
 from models import PaymentDetail, Group, User
-from datetime import date
+from datetime import date, time, timedelta
 from db.types import PaymentDetailStatus
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +10,7 @@ async def create_test_payment(session: AsyncSession):
 
     student = User(email="student@test.com", hashed_password="123", is_active=True, first_name="Test", last_name='Test',
                    role='student')
-    group = Group(name="Test Group", start_date=date.today(), end_date=date.today(), course_id=1, teacher_id=1,
+    group = Group(name="Test Group", start_date=date.today(), end_date=date.today(), approximate_lesson_start=time(hour=12), course_id=1, teacher_id=1,
                   is_active=True, is_archived=False)
     session.add_all([student, group])
     await session.flush()
