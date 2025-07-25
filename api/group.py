@@ -22,16 +22,16 @@ from models.user import User, student_group_association_table
 from models.group import Group
 from models.course import Course
 from schemas.group import (
-    GroupCreate, 
+    GroupCreate,
+    GroupProfileResponse, 
     GroupResponse,
     GroupStudentDetailResponse,
     GroupStundentPartialUpdate,
-    GroupTeacherProfileResponse, 
     GroupUpdate, 
     GroupPartialUpdate,
     GroupStudentResponse,
     GroupStudentUpdate,
-    TeacherProfileGroup
+    ProfileGroup,
     )
 from schemas.pagination import Pagination
 from schemas.user import StudentResponse
@@ -277,29 +277,42 @@ async def group_students_partial_update(
 
 @group_router.get(
         "/my", 
-        response_model=GroupTeacherProfileResponse, 
+        response_model=GroupProfileResponse, 
         status_code=status.HTTP_200_OK
 )
 async def group_list_profile(
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=100)] = 20,
-    user: User = Depends(current_teacher_user),
+    user: User = Depends(current_student_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
     Returns current teacher user groups
 
-    ROLES -> teacher 
+    ROLES -> student, teacher 
     '''
     offset = (page-1)*size
-    stmt = (
-        select(Group, func.count(User.id).label("student_count"))
-        .options(selectinload(Group.course))
-        .outerjoin(Group.students)
-        .where(Group.teacher_id == user.id)
-        .limit(limit=size)
-        .offset(offset=offset)
-        .group_by(Group.id)
+    student_count = func.count(User.id).over(partition_by=Group.id).label("student_count")
+
+    if user.role == Role.STUDENT:
+        stmt = (
+            select(Group, student_count)
+            .filter(Group.students.any(User.id == user.id))
+            .join(Group.students, isouter=True)
+            .options(selectinload(Group.course))
+            .distinct(Group.id)
+            .limit(size)
+            .offset(offset)
+        )
+    elif user.role == Role.TEACHER or user.role == Role.ADMIN:
+        stmt = (
+            select(Group, student_count)
+            .join(Group.students, isouter=True)
+            .where(Group.teacher_id == user.id)
+            .options(selectinload(Group.course))
+            .distinct(Group.id)
+            .limit(size)
+            .offset(offset)
         )
     result = await session.execute(stmt)
     total_stmt = select(func.count()).select_from(Group).where(Group.teacher_id == user.id)
@@ -315,7 +328,7 @@ async def group_list_profile(
     for row in group_rows:
         group = row['Group']
         groups.append(
-            TeacherProfileGroup(
+            ProfileGroup(
                 id=group.id,
                 name=group.name,
                 start_date=group.start_date,
@@ -326,7 +339,7 @@ async def group_list_profile(
             )
         )
     response = {
-        'attendance' : groups,
+        'groups' : groups,
         'pagination' : Pagination(
             current_page_size=size,
             current_page=page,
