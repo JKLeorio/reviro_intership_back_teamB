@@ -1,7 +1,12 @@
 import uvicorn
+import logging
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+from contextlib import asynccontextmanager
 
 from api.enrollment import enrollment_router
 from api.auth import authRouter
@@ -10,10 +15,28 @@ from api.lesson import (lesson_router, classroom_router, homework_router, homewo
                         homework_review_router)
 from api.group import group_students_router, group_router
 from api.user import user_router
-from api.payment import payment_router, subscription_router
+from api.payment import payment_router, subscription_router, payment_details, update_and_check_payments
 from api.shedule import shedule_router
+from api.lesson_attendance import attendance_router
 
-app = FastAPI()
+
+scheduler = AsyncIOScheduler()
+logging.basicConfig(level=logging.INFO)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logging.info("Lifespan started")
+    try:
+        trigger = CronTrigger(hour=0, minute=0)
+        scheduler.add_job(update_and_check_payments, trigger)
+        scheduler.start()
+        logging.info("Scheduler started")
+        yield
+    finally:
+        scheduler.shutdown()
+        logging.info("Scheduler stopped")
+
+app = FastAPI(lifespan=lifespan)
 
 origins = ['*']
 
@@ -29,9 +52,9 @@ app.add_middleware(
 app.mount("/media", StaticFiles(directory="media"), name="media")
 
 
-app.include_router(shedule_router, prefix='/shedule', tags=['Shedule'])
-
+app.include_router(shedule_router, prefix='/shedule', tags=['Schedule'])
 app.include_router(authRouter, prefix="/auth", tags=["Auth"])
+app.include_router(attendance_router, prefix="/attendance", tags=["Attendance"])
 app.include_router(enrollment_router, prefix="/enrollment", tags=["Enrollments"])
 app.include_router(course_router, prefix="/courses", tags=["Courses"])
 app.include_router(language_router, prefix="/languages", tags=["Languages"])
@@ -44,6 +67,7 @@ app.include_router(homework_router, prefix='/homeworks', tags=['Homeworks-teache
 app.include_router(homework_submission_router, prefix='/submissions', tags=['Homeworks-student'])
 app.include_router(homework_review_router, prefix='/homework_review', tags=['Homeworks-review'])
 app.include_router(payment_router, prefix='/payment', tags=['Payments'])
+app.include_router(payment_details, prefix='/payment_details', tags=['Payment-details'])
 app.include_router(subscription_router, prefix='/subscription', tags=['Subscriptions'])
 app.include_router(user_router, prefix='/user', tags=['Users'])
 

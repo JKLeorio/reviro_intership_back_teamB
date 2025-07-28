@@ -3,6 +3,11 @@ from typing import Optional, List
 from pydantic import BaseModel, model_validator, ConfigDict, HttpUrl
 from fastapi import UploadFile, File
 
+from db.types import AttendanceStatus
+from schemas.group import GroupBase
+from schemas.pagination import Pagination
+from schemas.user import UserBase
+
 
 class ClassroomBase(BaseModel):
     name: str
@@ -38,6 +43,7 @@ class LessonRead(BaseModel):
     group_name: Optional[str] = None
     classroom_name: Optional[str] = None
     created_at: datetime
+    passed: bool
 
     homework: Optional['HomeworkBase']
 
@@ -60,6 +66,8 @@ class LessonBase(BaseModel):
     teacher_id: int
     group_id: int
     classroom_id: int
+    passed: bool
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LessonCreate(BaseModel):
@@ -71,6 +79,7 @@ class LessonCreate(BaseModel):
     lesson_end: time
     teacher_id: int
     classroom_id: int
+    passed: bool = False
 
     @model_validator(mode='after')
     def validate_time(self) -> 'LessonCreate':
@@ -89,6 +98,7 @@ class LessonUpdate(BaseModel):
     teacher_id: Optional[int] = None
     group_id: Optional[int] = None
     classroom_id: Optional[int] = None
+    passed: Optional[bool] = False
 
     @model_validator(mode='after')
     def validate_time(self):
@@ -183,3 +193,62 @@ class HomeworkReviewBase(BaseModel):
 
 class HomeworkReviewUpdate(HomeworkReviewBase):
     pass
+
+
+
+class AttendanceBase(BaseModel):
+    id: int
+    status: AttendanceStatus
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AttendanceResponse(AttendanceBase):
+    student: UserBase
+    lesson_id: int
+
+
+class AttendanceLesson(BaseModel):
+    id: int
+    name: str
+    day: date
+    lesson_start: time
+    lesson_end: time
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AttendanceGroup(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+    
+
+class AttendanceItem(BaseModel):
+    id: int
+    status: AttendanceStatus
+    created_at: datetime
+    student_id: int
+    lesson: AttendanceLesson
+
+class AttendanceWithGroup(BaseModel):
+    group: AttendanceGroup
+    attendance: list[AttendanceItem]
+
+class UserAttendanceResponse(BaseModel):
+    attendance_groups: list[AttendanceWithGroup]
+    pagination: Pagination
+
+class AttendanceCreate(BaseModel):
+    status: AttendanceStatus = AttendanceStatus.ABSENT
+    student_id: int
+    lesson_id: int
+
+class AttendanceUpdate(AttendanceCreate):
+    pass
+
+class AttendancePartialUpdate(AttendanceCreate):
+    status: Optional[AttendanceStatus] = None
+    student_id: Optional[int] = None
+    lesson_id: Optional[int] = None
