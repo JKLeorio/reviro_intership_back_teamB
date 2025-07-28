@@ -92,8 +92,18 @@ class GroupStundentPartialUpdate(GroupPartialUpdate):
     students: Optional[List[int]]
 
 
+
 class GroupStudentDetailResponse(BaseModel):
     student: StudentResponse
     payment_status: PaymentDetailStatus
     attendance_ratio: float
     
+
+class GroupProfileResponse(BaseModel):
+    id: int
+    name: str
+    start_date: date
+    end_date: date
+    is_active: bool
+    student_count: int
+
