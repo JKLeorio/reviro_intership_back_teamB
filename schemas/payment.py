@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 import uuid
 from pydantic import BaseModel, ConfigDict
 
-from db.types import Currency, PaymentMethod, PaymentStatus, SubscriptionStatus
+from db.types import Currency, PaymentMethod, PaymentStatus, SubscriptionStatus, PaymentDetailStatus
 from models.payment import Payment, Subscription
 from schemas.course import CourseRelationBase
 from schemas.user import UserBase
@@ -80,3 +80,41 @@ class PaymentPartialUpdate(BaseModel):
 
 
 SubscriptionResponse.model_rebuild()
+
+
+class PaymentDetailBase(BaseModel):
+    id: int
+    student_id: int
+    group_id: int
+    group_name: str
+    group_end: date
+    deadline: date
+    status: PaymentDetailStatus
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentDetailCreate(PaymentDetailBase):
+    pass
+
+
+class PaymentDetailUpdate(BaseModel):
+
+    current_month_number: Optional[int] = None
+    months_paid: Optional[int] = None
+    status: Optional[PaymentDetailStatus] = None
+
+
+class PaymentDetailRead(BaseModel):
+    id: int
+    student_id: int
+    group_id: int
+    joined_at: date
+    months_paid: int
+    is_active: bool
+    price: float
+    current_month_number: int
+    deadline: date
+    status: PaymentDetailStatus
+
+    model_config = ConfigDict(from_attributes=True)

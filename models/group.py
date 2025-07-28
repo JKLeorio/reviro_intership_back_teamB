@@ -1,7 +1,7 @@
-from datetime import datetime, date
+from datetime import datetime, date, time
 from typing import List
 from db.dbbase import Base
-from sqlalchemy import DateTime, String, ForeignKey, Date, Boolean
+from sqlalchemy import DateTime, String, ForeignKey, Date, Boolean, Time
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from utils.date_time_utils import get_current_time
 from models.lesson import Lesson
@@ -13,10 +13,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from models.user import student_group_association_table, User
     from models.lesson import Lesson
+    from models.payment import PaymentDetail
 
 
 class Group(Base):
-    from models.payment import Payment
+
     __tablename__ = 'groups'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -25,6 +26,8 @@ class Group(Base):
 
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    approximate_lesson_start: Mapped[time] = mapped_column(Time, nullable=False)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -40,4 +43,4 @@ class Group(Base):
     students: Mapped[List["User"]] = relationship(secondary="student_group_association_table",
                                                      back_populates="groups_joined")
 
-    # payments: Mapped[List["Payment"]] = relationship(back_populates="group")
+    payment_details: Mapped[List["PaymentDetail"]] = relationship(back_populates="group")
