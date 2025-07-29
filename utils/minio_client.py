@@ -47,7 +47,6 @@ class MinioClient:
     def get_file_url(self, object_name: str):
         return self.client.presigned_get_object(self.bucket_name, object_name=object_name)
 
-
     def _exception(self, detail: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
