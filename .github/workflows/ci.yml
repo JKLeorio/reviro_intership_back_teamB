@@ -49,11 +49,10 @@ jobs:
           MINIO_ROOT_PASSWORD: minioadmin
         options: >-
           server /data --console-address ":9001"
-        healthcheck:
-          test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
-          interval: 30s
-          timeout: 10s
-          retries: 3
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 3
 
     steps:
       - name: Checkout code
