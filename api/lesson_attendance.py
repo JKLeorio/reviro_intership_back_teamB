@@ -255,7 +255,7 @@ async def attendance_create(
     attendance = Attendance(**attendance_data.model_dump())
     session.add(attendance)
     await session.commit()
-    await session.refresh(attendance)
+    await session.refresh(attendance, attribute_names=['student'])
     return attendance
 
 
@@ -302,7 +302,7 @@ async def attendance_update(
         setattr(attendance,key,value)
     
     await session.commit()
-    await session.refresh(attendance)
+    await session.refresh(attendance, attribute_names=['student'])
     return attendance
 
 
@@ -353,7 +353,7 @@ async def attendance_partial_update(
         setattr(attendance,key,value)
     
     await session.commit()
-    await session.refresh(attendance)
+    await session.refresh(attendance, attribute_names=['student'])
     return attendance
 
 
