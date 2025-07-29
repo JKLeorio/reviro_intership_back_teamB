@@ -1,9 +1,10 @@
-import aiofiles
+import logging
+
 import os
 from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import Depends, APIRouter, HTTPException, status, Query, Form, UploadFile, File, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -23,7 +24,10 @@ from schemas.lesson import (
     HomeworkReviewUpdate, HomeworkSubmissionShort
 )
 
+from utils.minio_client import minio_client
+
 from db.database import get_async_session
+
 
 lesson_router = APIRouter()
 classroom_router = APIRouter()
@@ -322,11 +326,7 @@ async def create_homework(lesson_id: int, deadline: datetime = Form(),
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
     file_path = None
     if file:
-        os.makedirs(HOMEWORK_FOLDER, exist_ok=True)
-        filename = f"{lesson.name}_{file.filename}"
-        file_path = os.path.join(HOMEWORK_FOLDER, filename)
-        async with aiofiles.open(file_path, 'wb') as f_out:
-            await f_out.write(await file.read())
+        file_path = await minio_client.upload_file(file)
 
     new_homework = Homework(
         lesson_id=lesson_id,
@@ -358,12 +358,18 @@ async def download_submission(homework_id: int, db: AsyncSession = Depends(get_a
         raise HTTPException(status_code=403, detail="You are not allowed")
     if not homework:
         raise HTTPException(status_code=404, detail="Submission not found")
-    if user.id not in get_group_students(homework.lesson.group):
-        raise HTTPException(status_code=403, detail="You are not allowed")
     if not homework.file_path:
         raise HTTPException(status_code=404, detail="No file attached")
 
-    return FileResponse(homework.file_path, filename=os.path.basename(homework.file_path))
+    try:
+        file_stream = minio_client.download_file(homework.file_path)
+        return StreamingResponse(
+            file_stream,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={os.path.basename(homework.file_path)}"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cannot generate download url: {e}")
 
 
 @homework_router.patch("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
@@ -387,13 +393,12 @@ async def update_homework(homework_id: int, deadline: datetime = Form(),
     if description:
         homework.description = description
     if file:
-        if homework.file_path and os.path.exists(homework.file_path):
-            os.remove(homework.file_path)
-        os.makedirs(HOMEWORK_FOLDER, exist_ok=True)
-        filename = f"{homework_id}_{file.filename}"
-        file_path = os.path.join(HOMEWORK_FOLDER, filename)
-        async with aiofiles.open(file_path, 'wb') as f_out:
-            await f_out.write(await file.read())
+        if homework.file_path:
+            try:
+                minio_client.client.remove_object(homework.file_path)
+            except:
+                pass
+        file_path = await minio_client.upload_file(file)
         homework.file_path = file_path
 
     await db.commit()
@@ -412,9 +417,9 @@ async def remove_file_from_homework(homework_id: int, db: AsyncSession = Depends
         raise HTTPException(status_code=404, detail="Homework not found")
     if user.id != homework.lesson.teacher_id and user.role != Role.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized")
-    if homework.file_path and os.path.exists(homework.file_path):
+    if homework.file_path:
         try:
-            os.remove(homework.file_path)
+            minio_client.client.remove_object(minio_client.bucket_name, homework.file_path)
         except:
             pass
     homework.file_path = None
@@ -422,7 +427,6 @@ async def remove_file_from_homework(homework_id: int, db: AsyncSession = Depends
     await db.commit()
     await db.refresh(homework)
     return {"detail": f"File removed from homework with id {homework_id}"}
-
 
 
 @homework_router.delete("/{homework_id}", status_code=status.HTTP_200_OK)
@@ -438,6 +442,11 @@ async def destroy_homework(homework_id: int, db: AsyncSession = Depends(get_asyn
         raise HTTPException(status_code=404, detail="Homework not found")
     if user.id != homework.lesson.teacher_id and user.role != Role.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized")
+    if homework.file_path:
+        try:
+            minio_client.client.remove_object(minio_client.bucket_name, homework.file_path)
+        except Exception as e:
+            logging.error(f"Failed to remove file {homework.file_path}: {e}")
 
     await db.delete(homework)
     await db.commit()
@@ -450,9 +459,6 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
                           file: UploadFile | str = File(None),
                           db: AsyncSession = Depends(get_async_session), user: User = Depends(current_student_user)):
     homework = await get_homework_or_none(homework_id, db, user)
-    if not homework:
-        raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
-
     if not homework:
         raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
 
@@ -471,12 +477,10 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
 
     file_path = None
     if file:
-
-        os.makedirs(MEDIA_FOLDER, exist_ok=True)
-        filename = f"{user.first_name}-{user.last_name}_{file.filename}"
-        file_path = os.path.join(MEDIA_FOLDER, filename)
-        async with aiofiles.open(file_path, "wb") as f_out:
-            await f_out.write(await file.read())
+        try:
+            file_path = await minio_client.upload_file(file)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to upload file: {e}")
 
     submission = HomeworkSubmission(
         homework_id=homework_id,
@@ -549,7 +553,15 @@ async def download_submission(submission_id: int, db: AsyncSession = Depends(get
     if not submission.file_path:
         raise HTTPException(status_code=404, detail="No file attached")
 
-    return FileResponse(submission.file_path, filename=os.path.basename(submission.file_path))
+    try:
+        file_stream = minio_client.download_file(submission.file_path)
+        return StreamingResponse(
+            file_stream,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={os.path.basename(submission.file_path)}"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not generate download URL: {e}")
 
 
 @homework_submission_router.get('/{submission_id}',
@@ -582,13 +594,12 @@ async def update_homework_submission(submission_id: int, content: Optional[str] 
     if content:
         submission.content = content
     if file:
-        if submission.file_path and os.path.exists(submission.file_path):
-            os.remove(submission.file_path)
-        os.makedirs(MEDIA_FOLDER, exist_ok=True)
-        filename = f"{user.id}_{file.filename}"
-        file_path = os.path.join(MEDIA_FOLDER, filename)
-        async with aiofiles.open(file_path, 'wb') as f_out:
-            await f_out.write(await file.read())
+        if submission.file_path:
+            try:
+                minio_client.client.remove_object(minio_client.bucket_name, submission.file_path)
+            except Exception:
+                pass
+        file_path = await minio_client.upload_file(file)
         submission.file_path = file_path
 
     await db.commit()
@@ -606,11 +617,11 @@ async def remove_file_from_submission(submission_id: int, db: AsyncSession = Dep
         raise HTTPException(status_code=404, detail="Submission not found")
     if user.role != Role.ADMIN and user.id != submission.student_id:
         raise HTTPException(status_code=403, detail="You don't have enough permissions")
-    if submission.file_path and os.path.exists(submission.file_path):
+    if submission.file_path:
         try:
-            os.remove(submission.file_path)
-        except:
-            pass
+            minio_client.client.remove_object(minio_client.bucket_name, submission.file_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to remove file: {e}")
     submission.file_path = None
     await db.commit()
     await db.refresh(submission)
@@ -628,6 +639,11 @@ async def destroy_homework_submission(submission_id: int,
 
     if user.id != submission.student_id and user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
+    if submission.file_path:
+        try:
+            minio_client.client.remove_object(minio_client.bucket_name, submission.file_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to remove file: {e}")
 
     await db.delete(submission)
     await db.commit()
