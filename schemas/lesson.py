@@ -204,8 +204,10 @@ class AttendanceBase(BaseModel):
 
 
 class AttendanceResponse(AttendanceBase):
+    status: AttendanceStatus
     student: UserBase
     lesson_id: int
+    created_at: datetime
 
 
 class AttendanceLesson(BaseModel):
@@ -248,7 +250,7 @@ class AttendanceCreate(BaseModel):
 class AttendanceUpdate(AttendanceCreate):
     pass
 
-class AttendancePartialUpdate(AttendanceCreate):
+class AttendancePartialUpdate(BaseModel):
     status: Optional[AttendanceStatus] = None
     student_id: Optional[int] = None
     lesson_id: Optional[int] = None
