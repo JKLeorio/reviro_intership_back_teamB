@@ -1,9 +1,10 @@
-import os
 import io
+import os
 from uuid import uuid4
-from minio import Minio
+
 from decouple import config
-from fastapi import UploadFile, HTTPException, status
+from fastapi import HTTPException, UploadFile, status
+from minio import Minio
 
 
 class MinioClient:
@@ -45,7 +46,9 @@ class MinioClient:
             self._exception(f"Error while downloading file: {e}")
 
     def get_file_url(self, object_name: str):
-        return self.client.presigned_get_object(self.bucket_name, object_name=object_name)
+        return self.client.presigned_get_object(
+            self.bucket_name, object_name=object_name
+        )
 
     def _exception(self, detail: str):
         raise HTTPException(
