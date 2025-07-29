@@ -98,45 +98,6 @@ group_students_router = routing.APIRouter()
 
 
 @group_students_router.get(
-        "/my", 
-        response_model=List[GroupProfileResponse], 
-        status_code=status.HTTP_200_OK
-)
-async def group_list_profile(
-    user: User = Depends(current_student_user),
-    session: AsyncSession = Depends(get_async_session)
-):
-    '''
-    Returns current user groups
-
-    ROLES -> student 
-    '''
-    stmt = (
-        select(Group, func.count(User.id).label("student_count"))
-        .options(selectinload(Group.course))
-        .outerjoin(Group.students)
-        .where(Group.students.any(User.id == user.id))
-        .group_by(Group.id)
-        )
-
-    result = await session.execute(stmt)
-    group_rows = result.mappings().all()
-    response = []
-    for row in group_rows:
-        group = row['Group']
-        response.append(
-            GroupProfileResponse(
-                id=group.id,
-                name=group.name,
-                start_date=group.start_date,
-                end_date=group.end_date,
-                is_active=group.is_active,
-                student_count=row['student_count']
-            )
-        )
-    return response
-
-@group_students_router.get(
         '/',
         response_model=List[GroupStudentResponse],
         status_code=status.HTTP_200_OK,
