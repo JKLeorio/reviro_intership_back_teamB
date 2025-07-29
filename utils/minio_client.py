@@ -9,12 +9,12 @@ from fastapi import UploadFile, HTTPException, status
 class MinioClient:
     def __init__(self):
         self.client = Minio(
-            endpoint=config("MINIO_ENDPOINT"),
-            access_key=config("MINIO_ACCESS_KEY"),
-            secret_key=config("MINIO_SECRET_KEY"),
-            secure=config("MINIO_SECURE", cast=bool),
+            endpoint=config("MINIO_ENDPOINT", default="minio:9000"),
+            access_key=config("MINIO_ACCESS_KEY", default="minioadmin"),
+            secret_key=config("MINIO_SECRET_KEY", default="minioadmin"),
+            secure=config("MINIO_SECURE", default="false", cast=bool),
         )
-        self.bucket_name = config("MINIO_BUCKET")
+        self.bucket_name = config("MINIO_BUCKET", default="minio-bucket")
 
     def create_bucket(self):
         if not self.client.bucket_exists(self.bucket_name):
