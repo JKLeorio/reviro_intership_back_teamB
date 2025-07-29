@@ -1,13 +1,13 @@
 import logging
-
+from math import ceil
 import os
 from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import Depends, APIRouter, HTTPException, status, Query, Form, UploadFile, File, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 
 from api.auth import current_student_user, current_teacher_user, current_admin_user
@@ -16,6 +16,8 @@ from db.types import AttendanceStatus, Role
 from models.group import Group
 from models.lesson import Attendance, Lesson, Classroom, Homework, HomeworkSubmission, HomeworkReview
 from models.user import User
+
+from schemas.pagination import PaginatedResponse, Pagination
 
 from schemas.lesson import (
     LessonRead, LessonCreate, LessonUpdate, LessonBase, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
@@ -576,6 +578,67 @@ async def get_homework_submission(submission_id: int, request: Request,
     if user.id != submission.student_id and user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
     return submission
+
+
+@homework_submission_router.get('/user/{user_id}', response_model=PaginatedResponse[HomeworkSubmissionRead],
+                                status_code=status.HTTP_200_OK)
+async def get_homework_submissions_by_user_id(user_id: int, group_id: Optional[int] = None,
+                                              page: int = Query(1, ge=1),
+                                              size: int = Query(10, ge=1, le=100),
+                                              db: AsyncSession = Depends(get_async_session),
+                                              curr_user: User = Depends(current_student_user)):
+    if curr_user.id != user_id and curr_user.role not in (Role.TEACHER, Role.ADMIN):
+        raise HTTPException(status_code=403, detail=f"You don't have enough permissions")
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f'User with id {user_id} not found')
+
+    if group_id is not None:
+        group = await db.get(Group, group_id)
+        if group is None:
+            raise HTTPException(status_code=404, detail=f'Group with id {group_id} not found')
+
+        stmt = (
+            select(HomeworkSubmission)
+            .join(HomeworkSubmission.homework)
+            .join(Homework.lesson)
+            .where(
+                and_(
+                    HomeworkSubmission.student_id == user_id,
+                    Lesson.group_id == group_id
+                )
+            )
+            .options(
+                joinedload(HomeworkSubmission.review),
+                joinedload(HomeworkSubmission.homework).joinedload(Homework.lesson)
+            )
+        )
+    else:
+        stmt = (
+            select(HomeworkSubmission)
+            .where(HomeworkSubmission.student_id == user_id)
+            .options(selectinload(HomeworkSubmission.review),
+                selectinload(HomeworkSubmission.homework).selectinload(Homework.lesson)
+            )
+        )
+
+    count_stmt = stmt.with_only_columns(func.count(), maintain_column_froms=True).order_by(None)
+    total_items = (await db.execute(count_stmt)).scalar_one()
+    total_pages = ceil(total_items / size) if total_items else 1
+    if page > total_pages:
+        page = total_pages
+    stmt = stmt.limit(size).offset((page-1) * size)
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+    return PaginatedResponse[HomeworkSubmissionRead](
+        items=items,
+        pagination=Pagination(
+            total_items=total_items,
+            total_pages=total_pages,
+            current_page=page,
+            current_page_size=len(items)
+        )
+    )
 
 
 @homework_submission_router.patch('/{submission_id}', response_model=HomeworkSubmissionShort,
