@@ -17,10 +17,12 @@ env:
 
   MINIO_ROOT_USER: minioadmin
   MINIO_ROOT_PASSWORD: minioadmin
-  MINIO_ENDPOINT: localhost:9000
+  MINIO_ENDPOINT: http://127.0.0.1:9000
   MINIO_ACCESS_KEY: minioadmin
   MINIO_SECRET_KEY: minioadmin
+  MINIO_BUCKET: minio-bucket
   MINIO_SECURE: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,21 +40,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-      minio:
-        image: minio/minio
-        ports:
-          - 9000:9000
-          - 9001:9001
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        command: server /data --console-address ":9001"
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 30s
-          --health-timeout 10s
-          --health-retries 3
 
     steps:
       - name: Checkout code
@@ -78,13 +65,19 @@ jobs:
         run: |
           timeout 60s bash -c 'until pg_isready -h 127.0.0.1 -p 5432 -U postgres; do sleep 2; done'
 
+      - name: Start MinIO
+        run: | 
+          docker run -d --name minio -p 9000:9000 -p 9001:9001 \
+          -e MINIO_ROOT_USER=minioadmin \
+          -e MINIO_ROOT_PASSWORD=minioadmin \
+          minio/minio server /data --console-address ":9001"
       - name: Wait for MinIO
         run: |
           timeout 60s bash -c '
-            until curl -f http://localhost:9000/minio/health/live; do
+            until curl -f http://127.0.0.1:9000/minio/health/live; do
               echo "Waiting for MinIO..."
               sleep 2
-            done'
+            done'    
       
 
       - name: Create test database
