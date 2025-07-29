@@ -119,6 +119,7 @@ async def test_create_lesson(client):
         "end_date": "2025-09-06",
         "is_active": True,
         "is_archived": False,
+        'approximate_lesson_start':'12:00:00',
         "course_id": course_json['id'],
         "teacher_id": data['id']
 
