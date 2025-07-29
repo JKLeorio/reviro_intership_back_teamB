@@ -15,6 +15,12 @@ env:
   SECRET: reviro
   TEST_DB_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/eureka_test
 
+  MINIO_ROOT_USER: minioadmin
+  MINIO_ROOT_PASSWORD: minioadmin
+  MINIO_ENDPOINT: localhost:9000
+  MINIO_ACCESS_KEY: minioadmin
+  MINIO_SECRET_KEY: minioadmin
+  MINIO_SECURE: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,6 +38,21 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+      minio:
+        image: minio/minio
+        ports:
+          - 9000:9000
+          - 9001:9001
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        command: server /data --console-address ":9001"
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 3
 
     steps:
       - name: Checkout code
@@ -57,6 +78,15 @@ jobs:
         run: |
           timeout 60s bash -c 'until pg_isready -h 127.0.0.1 -p 5432 -U postgres; do sleep 2; done'
 
+      - name: Wait for MinIO
+        run: |
+          timeout 60s bash -c '
+            until curl -f http://localhost:9000/minio/health/live; do
+              echo "Waiting for MinIO..."
+              sleep 2
+            done'
+      
+
       - name: Create test database
         run: |
           PGPASSWORD=postgres psql -h 127.0.0.1 -p 5432 -U postgres -c 'CREATE DATABASE eureka_test;'
@@ -65,3 +95,15 @@ jobs:
         run: uv run pytest
         env:
           DATABASE_URL: ${{ env.TEST_DB_URL }}
+          MINIO_ENDPOINT: ${{ env.MINIO_ENDPOINT }}
+          MINIO_ACCESS_KEY: ${{ env.MINIO_ACCESS_KEY }}
+          MINIO_SECRET_KEY: ${{ env.MINIO_SECRET_KEY }}
+
+          MINIO_SECURE: ${{ env.MINIO_SECURE }}
+  deploy:
+    if: github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Render
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
