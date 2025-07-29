@@ -1,9 +1,12 @@
+import logging
 import uuid
+import os
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional
 
 from dateutil.relativedelta import relativedelta
-from fastapi import Depends, HTTPException, routing, status, Query
+from fastapi import Depends, HTTPException, routing, status, Query, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from fastapi_filter.base.filter import FilterDepends
 from fastapi_filter.contrib.sqlalchemy import Filter
 from sqlalchemy import select
@@ -13,25 +16,29 @@ from sqlalchemy.orm import selectinload
 from fastapi_filter.contrib.sqlalchemy import Filter
 from fastapi_filter.base.filter import FilterDepends
 
-from api.auth import current_admin_user, current_user
+from api.auth import current_admin_user, current_user, current_student_user
 from db.database import get_async_session
 from db.dbbase import Base
 from db.types import (Currency, PaymentDetailStatus, PaymentMethod,
-                      PaymentStatus, SubscriptionStatus)
+                      PaymentStatus, SubscriptionStatus, Role)
 from models.course import Course
 from models.group import Group
-from models.payment import Payment, PaymentDetail, Subscription
+from models.payment import Payment, PaymentDetail, Subscription, PaymentRequisite, PaymentCheck
 from models.user import User
 
 from schemas.payment import (PaymentCreate, PaymentDetailBase, PaymentDetailUpdate,
-                             PaymentDetailRead, PaymentPartialUpdate,
-                             PaymentResponse, PaymentUpdate,
+                             PaymentDetailRead, PaymentPartialUpdate, PaymentRequisiteRead,
+                             PaymentResponse, PaymentUpdate, PaymentCheckRead,
                              SubscriptionCreate, SubscriptionPartialUpdate,
                              SubscriptionResponse, SubscriptionUpdate)
+
+from utils.minio_client import minio_client
 
 subscription_router = routing.APIRouter()
 payment_router = routing.APIRouter()
 payment_details = routing.APIRouter()
+payment_requisites = routing.APIRouter()
+payment_checks_router = routing.APIRouter()
 
 
 class SubscriptionFilter(Filter):
@@ -625,3 +632,225 @@ async def destroy_payment_by_payment_id(payment_id: Optional[int] = Query(defaul
     await db.delete(payment)
     await db.commit()
     return {'detail': "Payment detail has been deleted"}
+
+
+@payment_requisites.post('/', response_model=PaymentRequisiteRead, status_code=status.HTTP_201_CREATED)
+async def create_payment_requisite(bank_name: str = Form(None), account: str = Form(None),
+                                   qr: UploadFile = File(None), db: AsyncSession = Depends(get_async_session),
+                                   user: User = Depends(current_admin_user)):
+    if bank_name is None or account is None or qr is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Fill all fields")
+
+    if not qr.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="QR file must be an image")
+
+    try:
+        file_path = await minio_client.upload_file(qr)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {e}")
+
+    requisites = PaymentRequisite(
+        bank_name=bank_name,
+        account=account,
+        qr=file_path
+    )
+    db.add(requisites)
+    await db.commit()
+    await db.refresh(requisites)
+    return requisites
+
+
+async def get_requisite_or_none(requisite_id: int, db: AsyncSession):
+    requisites = await db.get(PaymentRequisite, requisite_id)
+    if requisites is None:
+        raise HTTPException(status_code=404, detail="Payment requisites not found")
+    return requisites
+
+
+@payment_requisites.patch('/{requisite_id}', response_model=PaymentRequisiteRead)
+async def update_payment_requisites(requisite_id: int, bank_name: Optional[str] = Form(None),
+                                    account: Optional[str] = Form(None),
+                                    qr: Optional[UploadFile] = File(None),
+                                    db: AsyncSession = Depends(get_async_session),
+                                    user: User = Depends(current_admin_user)):
+    requisites = await get_requisite_or_none(requisite_id, db)
+    if bank_name:
+        requisites.bank_name = bank_name
+    if account:
+        requisites.account = account
+    if qr:
+        if not qr.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="QR file must be an image")
+        if requisites.qr:
+            try:
+                minio_client.client.remove_object(minio_client.bucket_name, requisites.qr)
+            except Exception as e:
+                logging.warning(f"Failed to delete previous QR: {e}")
+        qr_path = await minio_client.upload_file(qr)
+        requisites.qr = qr_path
+    await db.commit()
+    await db.refresh(requisites)
+    return requisites
+
+
+@payment_requisites.get("/{requisite_id}")
+async def get_requisite_by_id(requisite_id: int, db: AsyncSession = Depends(get_async_session)):
+    requisites = await get_requisite_or_none(requisite_id, db)
+    url = None
+    if requisites.qr is not None:
+        url = minio_client.get_file_url(requisites.qr)
+    return {"bank_name": requisites.bank_name, "account": requisites.account, "qr_url": url}
+
+
+@payment_requisites.get('/', response_model=List[PaymentRequisiteRead])
+async def get_requisites_list(db: AsyncSession = Depends(get_async_session)):
+    result = await db.execute(select(PaymentRequisite))
+    requisites = result.scalars().all()
+    return requisites
+
+
+@payment_requisites.delete("/{requisite_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def destroy_requisite_by_id(requisite_id: int, db: AsyncSession = Depends(get_async_session),
+                                  user: User = Depends(current_admin_user)):
+    requisites = await get_requisite_or_none(requisite_id, db)
+    if requisites.qr:
+        try:
+            minio_client.client.remove_object(minio_client.bucket_name, requisites.qr)
+        except Exception as e:
+            logging.warning(f"Failed to delete QR from MinIO: {e}")
+    await db.delete(requisites)
+    await db.commit()
+    return {"detail": "Payment requisite has been deleted"}
+
+
+@payment_checks_router.post('/', response_model=PaymentCheckRead)
+async def create_payment_check(group_id: int, check: UploadFile = File(None),
+                               db: AsyncSession = Depends(get_async_session),
+                               user: User = Depends(current_student_user)):
+
+    group = await db.get(Group, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    try:
+        file_path = await minio_client.upload_file(check)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {e}")
+    new_check = PaymentCheck(
+        check=file_path,
+        student_id=user.id,
+        group_id=group_id
+    )
+    db.add(new_check)
+    await db.commit()
+    await db.refresh(new_check)
+    return new_check
+
+
+async def get_check_or_none(check_id: int, db: AsyncSession):
+    check = await db.get(PaymentCheck, check_id)
+    if not check:
+        raise HTTPException(status_code=404, detail="Check not found")
+    return check
+
+
+@payment_checks_router.get("/{check_id}/download",
+                                name="download_check")
+async def download_check(check_id: int, db: AsyncSession = Depends(get_async_session),
+                              user: User = Depends(current_student_user)):
+    check = await get_check_or_none(check_id, db)
+    if user.id != check.student_id and user.role not in (Role.TEACHER, Role.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
+
+    if not check.check:
+        raise HTTPException(status_code=404, detail="No file attached")
+
+    try:
+        file_stream = minio_client.download_file(check.check)
+        return StreamingResponse(
+            file_stream,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={os.path.basename(check.check)}"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not generate download URL: {e}")
+
+
+@payment_checks_router.patch('/{check_id}', response_model=PaymentCheckRead)
+async def update_payment_check(check_id: int, group_id: Optional[int] = Form(None),
+                                    file: Optional[UploadFile] = File(None),
+                                    db: AsyncSession = Depends(get_async_session),
+                                    user: User = Depends(current_admin_user)):
+    check = await get_check_or_none(check_id, db)
+    if check.student_id != user.id and user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
+    if group_id:
+        try:
+            group_id_int = int(group_id)
+            check.group_id = group_id_int
+        except ValueError:
+            raise HTTPException(status_code=400, detail="group_id must be a valid integer")
+
+    if file:
+        if check.check:
+            try:
+                minio_client.client.remove_object(minio_client.bucket_name, check.check)
+            except Exception as e:
+                logging.warning(f"Failed to delete previous QR: {e}")
+        check_path = await minio_client.upload_file(file)
+        check.check = check_path
+    await db.commit()
+    await db.refresh(check)
+    return check
+
+
+@payment_checks_router.get('/user/{user_id}', response_model=List[PaymentCheckRead])
+async def get_checks_by_user_id(user_id: int, db: AsyncSession = Depends(get_async_session),
+                                    curr_user: User = Depends(current_admin_user)):
+    if curr_user.id != user_id and curr_user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    result = await db.execute(select(PaymentCheck).where(PaymentCheck.student_id == user_id))
+    checks = result.scalars().all()
+    return checks
+
+
+@payment_checks_router.get('/group/{group_id}', response_model=List[PaymentCheckRead])
+async def get_checks_by_group_id(group_id: int, db: AsyncSession = Depends(get_async_session),
+                                    user: User = Depends(current_admin_user)):
+    group = await db.get(Group, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    result = await db.execute(select(PaymentCheck).where(PaymentCheck.group_id == group_id))
+    checks = result.scalars().all()
+    return checks
+
+
+@payment_checks_router.get('/{check_id}', response_model=PaymentCheckRead)
+async def get_check_by_id(check_id: int, db: AsyncSession = Depends(get_async_session),
+                                    user: User = Depends(current_admin_user)):
+    check = await db.get(PaymentCheck, check_id)
+    if check is None:
+        raise HTTPException(status_code=404, detail='Check not found')
+    return check
+
+
+@payment_checks_router.delete("/{check_id}", status_code=status.HTTP_200_OK)
+async def destroy_check_by_id(check_id: int, db: AsyncSession = Depends(get_async_session),
+                              user: User = Depends(current_admin_user)):
+    check = await db.get(PaymentCheck, check_id)
+    if check is None:
+        raise HTTPException(status_code=404, detail='Check not found')
+    if check.check:
+        try:
+            minio_client.client.remove_object(minio_client.bucket_name, check.check)
+        except Exception as e:
+            logging.warning(f"Failed to delete previous Check: {e}")
+
+    await db.delete(check)
+    await db.commit()
+    return {"detail": "Check has been deleted"}
