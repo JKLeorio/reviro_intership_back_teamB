@@ -21,7 +21,7 @@ from schemas.pagination import PaginatedResponse, Pagination
 
 from schemas.lesson import (
     LessonRead, LessonCreate, LessonUpdate, LessonBase, ClassroomRead, ClassroomCreate, ClassroomUpdate, HomeworkRead,
-    HomeworkSubmissionRead, HomeworkReviewCreate, HomeworkReviewRead, HomeworkReviewBase,
+    HomeworkSubmissionRead, HomeworkReviewCreate, HomeworkReviewRead, HomeworkReviewBase,HomeworkBase,
 
     HomeworkReviewUpdate, HomeworkSubmissionShort
 )
@@ -374,7 +374,7 @@ async def download_submission(homework_id: int, db: AsyncSession = Depends(get_a
         raise HTTPException(status_code=500, detail=f"Cannot generate download url: {e}")
 
 
-@homework_router.patch("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
+@homework_router.patch("/{homework_id}", response_model=HomeworkBase, status_code=status.HTTP_200_OK)
 async def update_homework(homework_id: int, deadline: datetime = Form(),
                           description: Optional[str] = Form(None), file: UploadFile | str = File(None),
                           db: AsyncSession = Depends(get_async_session),
@@ -525,7 +525,7 @@ async def get_my_homework_submission(homework_id: int, db: AsyncSession = Depend
     homework = await get_homework_or_none(homework_id, db, user)
     if not homework:
         raise HTTPException(status_code=404, detail="Submission not found")
-    if user.id not in get_group_students(homework.lesson.group):
+    if user.id not in get_group_students(homework.lesson.group) and user.role != Role.ADMIN:
         raise HTTPException(status_code=403, detail="You are not allowed")
     result = await db.execute(
         select(HomeworkSubmission)
