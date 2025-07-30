@@ -17,6 +17,7 @@ from fastapi_filter.contrib.sqlalchemy import Filter
 from fastapi_filter.base.filter import FilterDepends
 
 from api.auth import current_admin_user, current_user, current_student_user
+from api.utils import validate_related_fields
 from db.database import get_async_session
 from db.dbbase import Base
 from db.types import (Currency, PaymentDetailStatus, PaymentMethod,
@@ -782,6 +783,8 @@ async def update_payment_check(check_id: int, group_id: Optional[int] = Form(Non
                                     db: AsyncSession = Depends(get_async_session),
                                     user: User = Depends(current_admin_user)):
     check = await get_check_or_none(check_id, db)
+    if not check:
+        raise HTTPException(status_code=404, detail="Check not found")
     if check.student_id != user.id and user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
     if group_id:
