@@ -118,3 +118,41 @@ class PaymentDetailRead(BaseModel):
     status: PaymentDetailStatus
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentRequisiteRead(BaseModel):
+    id: int
+    bank_name: Optional[str] = None
+    account: Optional[str] = None
+    qr: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentRequisiteCreate(BaseModel):
+    bank_name: str
+    account: str
+    qr: str
+
+
+class PaymentRequisiteUpdate(BaseModel):
+    bank_name: Optional[str] = None
+    account: Optional[str] = None
+    qr: Optional[str] = None
+
+
+class PaymentCheckRead(BaseModel):
+    id: int
+    check: str
+    student_id: int
+    group_id: int
+    uploaded_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentCheckCreate(BaseModel):
+    check: str
+    group_id: int
+
+    model_config = ConfigDict(from_attributes=True)

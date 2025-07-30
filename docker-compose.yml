@@ -13,6 +13,22 @@ services:
       test: pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
       interval: 2s
       retries: 10
+
+  minio:
+    container_name: minio
+    image: minio/minio
+    restart: always
+    command: server --address ":9000" --console-address ":9001" /data --quiet
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    env_file:
+      - .env
+    volumes:
+      - minio_data:/data
+    networks:
+      - network_buff
+
   web:
     build:
       context: .
@@ -27,15 +43,21 @@ services:
       - network_buff
     links:
       - db:db
+      - minio:minio
     env_file:
       - .env
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_started
+
+
 
 volumes:
   postgres_data:
+  minio_data:
 
 networks:
   network_buff:
