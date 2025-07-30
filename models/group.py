@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from models.user import student_group_association_table, User
     from models.lesson import Lesson
-    from models.payment import PaymentDetail
+    from models.payment import PaymentDetail, PaymentCheck
 
 
 class Group(Base):
@@ -44,3 +44,5 @@ class Group(Base):
                                                      back_populates="groups_joined")
 
     payment_details: Mapped[List["PaymentDetail"]] = relationship(back_populates="group")
+
+    payment_checks: Mapped[List["PaymentCheck"]] = relationship(back_populates='group')
