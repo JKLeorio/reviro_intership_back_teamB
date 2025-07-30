@@ -9,6 +9,6 @@ async def validate_related_fields(models_ids: Dict[Base, int], session: AsyncSes
         if not await session.get(model, m_id):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={'detail':f'{model.__name__} not found'}
+                detail= f'{model.__name__} not found'
                 )
     return

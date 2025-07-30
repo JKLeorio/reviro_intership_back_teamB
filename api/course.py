@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from api.auth import current_admin_user
 from api.permissions import require_roles
+from api.utils import validate_related_fields
 
 from db.database import get_async_session
 from db.types import Role
@@ -20,6 +21,15 @@ from schemas.course import CourseRead, CourseBase, CourseUpdate
 course_router = APIRouter()
 language_router = APIRouter()
 level_router = APIRouter()
+
+
+async def is_language_exists(name, db):
+    existing_lang = await db.scalar(select(Language).where(Language.name.ilike(name)))
+    if existing_lang:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Language with name '{name}' already exists"
+        )
 
 
 @language_router.get("/", response_model=List[LanguageRead], status_code=status.HTTP_200_OK)
@@ -51,6 +61,8 @@ async def create_language(language_data: LanguageBase, db: AsyncSession = Depend
     '''
     Creates a language from the submitted data
     '''
+    await is_language_exists(name=language_data.name, db=db)
+
     new_language = Language(**language_data.model_dump())
     db.add(new_language)
     await db.commit()
@@ -68,9 +80,9 @@ async def update_language(id: int, language_data: LanguageUpdate, db: AsyncSessi
     language = result.scalar_one_or_none()
     if language is None:
         raise HTTPException(status_code=404, detail="Language not found")
-    update_data = language_data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(language, key, value)
+    if language_data.name is not None:
+        await is_language_exists(name=language_data.name, db=db)
+        language.name = language_data.name
     await db.commit()
     await db.refresh(language)
     return language
@@ -91,6 +103,18 @@ async def destroy_language(id: int, db: AsyncSession = Depends(get_async_session
     await db.delete(language)
     await db.commit()
     return {"detail": f"Language with id {id} has been deleted"}
+
+
+async def is_level_exists(code, db, exclude_id: int | None = None):
+    query = select(Level).where(Level.code == code)
+    if exclude_id is not None:
+        query = query.where(Level.id != exclude_id)
+    existing_level = await db.scalar(query)
+    if existing_level:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Level with code '{code}' already exists"
+        )
 
 
 @level_router.get("/", response_model=List[LevelRead], status_code=status.HTTP_200_OK)
@@ -120,7 +144,9 @@ async def create_level(level_data: LevelBase, db: AsyncSession = Depends(get_asy
     '''
     Creates a level from the submitted data
     '''
-    level_data.code = level_data.code.upper()
+    if level_data.code is not None:
+        level_data.code = level_data.code.upper()
+        await is_level_exists(code=level_data.code, db=db)
     new_level = Level(**level_data.model_dump())
     db.add(new_level)
     await db.commit()
@@ -139,9 +165,11 @@ async def update_level(id: int, level_data: LevelUpdate, db: AsyncSession = Depe
     if level is None:
         raise HTTPException(status_code=404, detail="Level not found")
 
+    if level_data.code is not None:
+        code = level_data.code.upper()
+        await is_level_exists(code=code, db=db, exclude_id=id)
+        level_data.code = code
     update_data = level_data.model_dump(exclude_unset=True)
-    if "code" in update_data and update_data["code"]:
-        update_data["code"] = update_data["code"].upper()
     for key, value in update_data.items():
         setattr(level, key, value)
     await db.commit()
@@ -241,7 +269,13 @@ async def update_course(id: int, course_data: CourseUpdate, db: AsyncSession = D
         raise HTTPException(status_code=404, detail="Course not found")
 
     update_data = course_data.model_dump(exclude_unset=True)
-
+    related = {}
+    if 'language_id' in update_data:
+        related[Language] = update_data['language_id']
+    if 'level_id' in update_data:
+        related[Level] = update_data['level_id']
+    if related:
+        await validate_related_fields(related, db)
     for key, value in update_data.items():
         setattr(course, key, value)
 
