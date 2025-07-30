@@ -300,7 +300,7 @@ async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_as
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
 
     result = await db.execute(select(Homework).where(Homework.id == homework_id)
-                              .options(selectinload(Homework.submissions)))
+                              .options(selectinload(Homework.submissions).selectinload(HomeworkSubmission.review)))
 
     homework = result.scalar_one_or_none()
     if not homework:
@@ -496,6 +496,9 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
     db.add(submission)
     await db.commit()
     await db.refresh(submission)
+    stmt = select(HomeworkSubmission).options(selectinload(HomeworkSubmission.review)).where(
+        HomeworkSubmission.id == submission.id)
+    submission_with_review = (await db.execute(stmt)).scalar_one()
     return submission
 
 

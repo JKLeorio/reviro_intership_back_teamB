@@ -122,6 +122,8 @@ class HomeworkRead(BaseModel):
 
     submissions: List["HomeworkSubmissionShort"] = []
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class HomeworkSubmissionShort(BaseModel):
     id: int
@@ -130,6 +132,8 @@ class HomeworkSubmissionShort(BaseModel):
     file_path: Optional[str] = None
     content: Optional[str] = None
     submitted_at: datetime
+
+    review: Optional["HomeworkReviewRead"] = None
 
     model_config = ConfigDict(from_attributes=True)
 
