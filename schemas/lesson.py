@@ -143,6 +143,7 @@ class HomeworkBase(BaseModel):
     deadline: datetime
     file_path: Optional[str] = None
     description: Optional[str] = None
+    lesson_id: int
 
     model_config = ConfigDict(from_attributes=True)
 
