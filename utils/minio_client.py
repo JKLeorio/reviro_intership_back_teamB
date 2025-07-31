@@ -30,6 +30,7 @@ class MinioClient:
             unique_filename = f"{uuid4().hex}{ext}"
 
             contents = await file.read()
+            print(self.bucket_name)
             self.client.put_object(
                 bucket_name=self.bucket_name,
                 object_name=unique_filename,
