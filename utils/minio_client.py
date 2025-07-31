@@ -29,14 +29,13 @@ class MinioClient:
             ext = os.path.splitext(file.filename)[1]
             unique_filename = f"{uuid4().hex}{ext}"
 
-            contents = await file.read()
             print(self.bucket_name)
             self.client.put_object(
                 bucket_name=self.bucket_name,
                 object_name=unique_filename,
-                data=io.BytesIO(contents),
-                length=len(contents),
-                content_type=file.content_type,
+                data=file.file,  # UploadFile.file is a SpooledTemporaryFile (stream)
+                length=len(await file.read()),  # try to avoid await again
+                content_type=file.content_type
             )
             print("Put object")
             return unique_filename
