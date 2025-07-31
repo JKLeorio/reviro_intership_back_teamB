@@ -25,6 +25,12 @@ class MinioClient:
     async def upload_file(self, file: UploadFile) -> str:
 
         try:
+
+            if not self.client.bucket_exists(self.bucket_name):
+                print(f"Bucket '{self.bucket_name}' not found. Creating bucket.")
+                self.client.make_bucket(self.bucket_name)
+            else:
+                print(f"Bucket '{self.bucket_name}' exists.")
             print('Successfully created bucket')
             ext = os.path.splitext(file.filename)[1]
             unique_filename = f"{uuid4().hex}{ext}"
