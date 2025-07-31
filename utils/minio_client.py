@@ -18,7 +18,13 @@ class MinioClient:
         )
         self.bucket_name = config("MINIO_BUCKET", default="minio-bucket")
 
+    def create_bucket(self):
+        if not self.client.bucket_exists(self.bucket_name):
+            self.client.make_bucket(self.bucket_name)
+
     async def upload_file(self, file: UploadFile) -> str:
+        self.create_bucket()
+        print('Successfully created bucket')
         try:
             ext = os.path.splitext(file.filename)[1]
             unique_filename = f"{uuid4().hex}{ext}"
@@ -31,6 +37,7 @@ class MinioClient:
                 length=len(contents),
                 content_type=file.content_type,
             )
+            print("Put object")
             return unique_filename
         except Exception as e:
             self._exception(f"Error while uploading file: {e}")
