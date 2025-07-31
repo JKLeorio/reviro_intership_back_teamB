@@ -9,6 +9,7 @@ from minio import Minio
 
 class MinioClient:
     def __init__(self):
+        print(f'{config("MINIO_ENDPOINT", default="minio")}:{config("MINIO_PORT", default=9000)}')
         self.client = Minio(
             endpoint=f'{config("MINIO_ENDPOINT", default="minio")}:{config("MINIO_PORT", default=9000)}',
             access_key=config("MINIO_ACCESS_KEY", default="minioadmin"),
@@ -17,12 +18,7 @@ class MinioClient:
         )
         self.bucket_name = config("MINIO_BUCKET", default="minio-bucket")
 
-    def create_bucket(self):
-        if not self.client.bucket_exists(self.bucket_name):
-            self.client.make_bucket(self.bucket_name)
-
     async def upload_file(self, file: UploadFile) -> str:
-        self.create_bucket()
         try:
             ext = os.path.splitext(file.filename)[1]
             unique_filename = f"{uuid4().hex}{ext}"
