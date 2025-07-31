@@ -25,21 +25,24 @@ class MinioClient:
     async def upload_file(self, file: UploadFile) -> str:
 
         try:
-            self.create_bucket()
             print('Successfully created bucket')
             ext = os.path.splitext(file.filename)[1]
             unique_filename = f"{uuid4().hex}{ext}"
-            file_content = await file.read()
+            file_content = file.file
+
+            file_content.seek(0, os.SEEK_END)
+            size = file_content.tell()
+            file_content.seek(0)
 
             print(f"Uploading to bucket: {self.bucket_name}")
-            print(f"File size: {len(file_content)} bytes")
+            print(f"File size: {size} bytes")
             print(f"Content type: {file.content_type}")
 
             self.client.put_object(
                 bucket_name=self.bucket_name,
                 object_name=unique_filename,
-                data=io.BytesIO(file_content),
-                length=len(file_content),
+                data=file_content,
+                length=size,
                 content_type=file.content_type
             )
             print("Put object")
