@@ -23,7 +23,7 @@ class MinioClient:
             self.client.make_bucket(self.bucket_name)
 
     async def upload_file(self, file: UploadFile) -> str:
-        self.create_bucket()
+
         print('Successfully created bucket')
         try:
             ext = os.path.splitext(file.filename)[1]
