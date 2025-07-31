@@ -9,20 +9,14 @@ from minio import Minio
 
 class MinioClient:
     def __init__(self):
-        print(f'{config("MINIO_ENDPOINT", default="minio")}')
+        print(f'{config("MINIO_ENDPOINT", default="minio")}:{config("MINIO_PORT", default=9000)}')
         self.client = Minio(
-            endpoint=config("MINIO_ENDPOINT", default="minio"),
+            endpoint=f'{config("MINIO_ENDPOINT", default="minio")}:{config("MINIO_PORT", default=9000)}',
             access_key=config("MINIO_ACCESS_KEY", default="minioadmin"),
             secret_key=config("MINIO_SECRET_KEY", default="minioadmin"),
             secure=config("MINIO_SECURE", default=False, cast=bool),
         )
         self.bucket_name = config("MINIO_BUCKET", default="minio-bucket")
-
-        try:
-            self.client.list_buckets()
-            print("✅ MinIO connection successful")
-        except Exception as e:
-            print(f"❌ MinIO connection failed: {e}")
 
     def create_bucket(self):
         if not self.client.bucket_exists(self.bucket_name):
