@@ -10,10 +10,10 @@ from minio import Minio
 class MinioClient:
     def __init__(self):
         self.client = Minio(
-            endpoint=config("MINIO_ENDPOINT", default="minio:9000"),
+            endpoint=f"{config('MINIO_ENDPOINT')}:{config('PORT')}",
             access_key=config("MINIO_ACCESS_KEY", default="minioadmin"),
             secret_key=config("MINIO_SECRET_KEY", default="minioadmin"),
-            secure=config("MINIO_SECURE", default="false", cast=bool),
+            secure=config("MINIO_SECURE", default=False, cast=bool),
         )
         self.bucket_name = config("MINIO_BUCKET", default="minio-bucket")
 
