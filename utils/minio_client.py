@@ -10,7 +10,7 @@ from minio import Minio
 class MinioClient:
     def __init__(self):
         self.client = Minio(
-            endpoint=f"{config('MINIO_ENDPOINT')}:{config('PORT')}",
+            endpoint=config("MINIO_ENDPOINT", default="minio:9000"),
             access_key=config("MINIO_ACCESS_KEY", default="minioadmin"),
             secret_key=config("MINIO_SECRET_KEY", default="minioadmin"),
             secure=config("MINIO_SECURE", default=False, cast=bool),
