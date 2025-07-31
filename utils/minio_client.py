@@ -9,14 +9,20 @@ from minio import Minio
 
 class MinioClient:
     def __init__(self):
-        print(f'{config("MINIO_ENDPOINT", default="minio")}:{config("MINIO_PORT", default=9000)}')
+        print(f'{config("MINIO_ENDPOINT", default="minio")}')
         self.client = Minio(
-            endpoint=f'{config("MINIO_ENDPOINT", default="minio")}:{config("MINIO_PORT", default=9000)}',
+            endpoint=config("MINIO_ENDPOINT", default="minio"),
             access_key=config("MINIO_ACCESS_KEY", default="minioadmin"),
             secret_key=config("MINIO_SECRET_KEY", default="minioadmin"),
             secure=config("MINIO_SECURE", default=False, cast=bool),
         )
         self.bucket_name = config("MINIO_BUCKET", default="minio-bucket")
+
+        try:
+            self.client.list_buckets()
+            print("✅ MinIO connection successful")
+        except Exception as e:
+            print(f"❌ MinIO connection failed: {e}")
 
     def create_bucket(self):
         if not self.client.bucket_exists(self.bucket_name):
@@ -33,8 +39,8 @@ class MinioClient:
             self.client.put_object(
                 bucket_name=self.bucket_name,
                 object_name=unique_filename,
-                data=io.BytesIO(file_content),  # UploadFile.file is a SpooledTemporaryFile (stream)
-                length=len(file_content),  # try to avoid await again
+                data=io.BytesIO(file_content),
+                length=len(file_content),
                 content_type=file.content_type
             )
             print("Put object")
