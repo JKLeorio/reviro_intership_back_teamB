@@ -25,8 +25,11 @@ class MinioClient:
     async def upload_file(self, file: UploadFile) -> str:
 
         try:
+            print("Проверяем существование бакета...")
+            exists = self.client.bucket_exists(self.bucket_name)
+            print(f"bucket_exists returned: {exists}")
 
-            if not self.client.bucket_exists(self.bucket_name):
+            if not exists:
                 print(f"Bucket '{self.bucket_name}' not found. Creating bucket.")
                 self.client.make_bucket(self.bucket_name)
             else:
