@@ -5,4 +5,4 @@ WORKDIR /data
 EXPOSE 80
 EXPOSE 81
 
-ENTRYPOINT ["minio", "server", "--console-address", ":80", "/data", "--address", ":81", "--quiet"]
+ENTRYPOINT ["minio", "server", "--address", ":80", "--console-address", ":81", "/data", "--quiet"]
