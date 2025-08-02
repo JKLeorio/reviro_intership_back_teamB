@@ -2,7 +2,7 @@ FROM minio/minio
 
 WORKDIR /data
 
-EXPOSE 80
-EXPOSE 81
+EXPOSE 9000
+EXPOSE 9001
 
-ENTRYPOINT ["minio", "server", "--address", ":80", "--console-address", ":81", "/data", "--quiet"]
+ENTRYPOINT ["minio", "server", "--address", ":9000", "--console-address", ":9001", "/data", "--quiet"]
