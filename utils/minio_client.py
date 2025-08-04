@@ -9,15 +9,15 @@ from minio import Minio
 
 class MinioClient:
     def __init__(self):
-        endpoint = f"{config('MINIO_ENDPOINT', default='minio')}:{config('MINIO_PORT', default=9000)}"
-        print(f'{config("MINIO_ENDPOINT", default="minio")}:{config("MINIO_PORT", default=9000)}')
         self.client = Minio(
-            endpoint=endpoint,
-            access_key=config("MINIO_ACCESS_KEY", default="minioadmin"),
-            secret_key=config("MINIO_SECRET_KEY", default="minioadmin"),
+            endpoint=f"{config('MINIO_ENDPOINT')}:{config('MINIO_PORT')}",
+            access_key=config("MINIO_ACCESS_KEY", default="eurekaminioadmin"),
+            secret_key=config("MINIO_SECRET_KEY", default="eurekaminioadmin"),
             secure=config("MINIO_SECURE", default=False, cast=bool),
         )
-        self.bucket_name = config("MINIO_BUCKET", default="minio-bucket")
+        self.bucket_name = config("MINIO_BUCKET", default="eureka-bucket")
+
+        self.create_bucket()
 
     def create_bucket(self):
         if not self.client.bucket_exists(self.bucket_name):
@@ -26,36 +26,22 @@ class MinioClient:
     async def upload_file(self, file: UploadFile) -> str:
 
         try:
-            print("Проверяем существование бакета...")
             exists = self.client.bucket_exists(self.bucket_name)
-            print(f"bucket_exists returned: {exists}")
 
             if not exists:
-                print(f"Bucket '{self.bucket_name}' not found. Creating bucket.")
                 self.client.make_bucket(self.bucket_name)
-            else:
-                print(f"Bucket '{self.bucket_name}' exists.")
-            print('Successfully created bucket')
             ext = os.path.splitext(file.filename)[1]
             unique_filename = f"{uuid4().hex}{ext}"
-            file_content = file.file
-
-            file_content.seek(0, os.SEEK_END)
-            size = file_content.tell()
-            file_content.seek(0)
-
-            print(f"Uploading to bucket: {self.bucket_name}")
-            print(f"File size: {size} bytes")
-            print(f"Content type: {file.content_type}")
+            file_content = await file.read()
+            file_size = len(file_content)
 
             self.client.put_object(
                 bucket_name=self.bucket_name,
                 object_name=unique_filename,
-                data=file_content,
-                length=size,
-                content_type=file.content_type
+                data=io.BytesIO(file_content),
+                length=file_size,
+                content_type=file.content_type or 'application/octet-stream'
             )
-            print("Put object")
             return unique_filename
         except Exception as e:
             self._exception(f"Error while uploading file: {e}")
