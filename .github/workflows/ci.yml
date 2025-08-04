@@ -18,7 +18,7 @@ env:
   MINIO_ROOT_USER: minioadmin
   MINIO_ROOT_PASSWORD: minioadmin
   MINIO_ENDPOINT: localhost
-  PORT: 9000
+  MINIO_PORT: 9000
   MINIO_ACCESS_KEY: minioadmin
   MINIO_SECRET_KEY: minioadmin
   MINIO_BUCKET: minio-bucket
