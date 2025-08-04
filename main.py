@@ -77,7 +77,6 @@ app.include_router(payment_requisites, prefix='/payment_requisites', tags=['Paym
 app.include_router(payment_checks_router, prefix='/checks', tags=["Payment-checks"])
 
 
-
 if __name__ == "__main__":
     uvicorn.run(
         app,
