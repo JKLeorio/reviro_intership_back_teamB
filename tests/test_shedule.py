@@ -115,7 +115,7 @@ async def test_set_up(
     LESSON_DATA['group_id'] = group_id
     LESSON_DATA['classroom_id'] = classroom_id
     for day in range(7):
-        LESSON_DATA['day'] = week_start + timedelta(days=day)
+        LESSON_DATA['day'] = (week_start + timedelta(days=day)).date()
         lesson = await lesson_factory(LESSON_DATA)
         week_day = calendar.day_abbr[day].upper()
         lesson = dict(lesson)

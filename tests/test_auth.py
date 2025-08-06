@@ -45,17 +45,18 @@ async def test_login(client, user_factory):
 
 
 
-# @pytest.mark.anyio
-# async def test_register_admin(client):
-#     USER_DATA['email'] = '8@mail.com'
-#     USER_DATA['phone_number'] = '888'
-#     USER_DATA['role'] = 'admin'
-#     response = await client.post(
-#         '/auth/register-admin',
-#         json=USER_DATA
-#         )
-#     assert response.status_code == status.HTTP_201_CREATED
-#     dict_comparator(USER_DATA, response.json())
+@pytest.mark.anyio
+@pytest.mark.role("super_admin")
+async def test_register_admin(client):
+    USER_DATA['email'] = '8@mail.com'
+    USER_DATA['phone_number'] = '888'
+    USER_DATA['role'] = 'admin'
+    response = await client.post(
+        '/auth/register-admin',
+        json=USER_DATA
+        )
+    assert response.status_code == status.HTTP_201_CREATED
+    dict_comparator(USER_DATA, response.json())
 
 
 
@@ -63,7 +64,7 @@ async def test_login(client, user_factory):
 @pytest.mark.role('student')
 async def test_register_admin_permission(client):
     response = await client.post(
-        '/auth/register-admin'
+        '/auth/register-admin',
         )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

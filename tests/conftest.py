@@ -1,3 +1,4 @@
+import contextlib
 import pytest
 import shutil
 import os
@@ -5,7 +6,7 @@ from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-
+from sqlalchemy import select
 from db.database import get_async_session
 from main import app
 from db.dbbase import Base
@@ -14,12 +15,17 @@ from models.user import User
 from db.types import Role
 from decouple import config
 
+from api.auth import current_super_user
 from api.lesson import MEDIA_FOLDER, HOMEWORK_FOLDER
 
 DATABASE_URL = config('TEST_DB_URL')
 
 test_engine = create_async_engine(DATABASE_URL)
-TestingSessionMaker = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+testing_session_maker = async_sessionmaker(
+    test_engine, 
+    class_=AsyncSession, 
+    expire_on_commit=False
+    )
 
 
 pytest_plugins = [
@@ -29,17 +35,11 @@ pytest_plugins = [
     "tests.fixtures.group_fixtures"
 ]
 
-
-DATABASE_URL = config('TEST_DB_URL')
-
-test_engine = create_async_engine(
-    DATABASE_URL,
-)
-
-TestingSessionMaker = async_sessionmaker(
-    test_engine
-)
-
+# @contextlib.asynccontextmanager
+@pytest.fixture(scope='session')
+async def session_session():
+    async with testing_session_maker() as session:
+        yield session
 
 @pytest.fixture(scope='session')
 def anyio_backend():
@@ -58,7 +58,7 @@ async def prepare_test_db():
 
 @pytest.fixture
 async def session() -> AsyncGenerator[AsyncSession, None]:
-    async with TestingSessionMaker() as session:
+    async with testing_session_maker() as session:
         yield session
 
 
@@ -76,37 +76,88 @@ async def client(override_session_dependency) -> AsyncGenerator[AsyncClient, Non
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         yield client
 
+@pytest.fixture(scope='session', autouse=True)
+async def users(session_session):
+    session = session_session 
+
+    super_admin = User(
+        first_name = 'super_admin',
+        last_name = 'super_admin',
+        email = 'super@super.com',
+        phone_number = '55544433321',
+        role = Role.ADMIN,
+        hashed_password = '',
+        is_active = True,
+        is_superuser = True,
+        is_verified = True
+        )
+    
+    admin = User(
+        first_name = 'admin',
+        last_name = 'admin',
+        email = 'admin@admin.com',
+        phone_number = '55544433322',
+        role = Role.ADMIN,
+        hashed_password = ''
+        )
+    teacher =  User(
+        first_name = 'teacher',
+        last_name = 'teacher',
+        email = 'teacher@teacher.com',
+        phone_number = '55544433323',
+        role = Role.TEACHER,
+        hashed_password = ''
+        )
+    student =  User(
+        first_name = 'student',
+        last_name = 'student',
+        email = 'student@student.com',
+        phone_number = '55544433324',
+        role = Role.STUDENT,
+        hashed_password = ''
+        )
+    session.add_all([super_admin, admin, teacher, student])
+    await session.commit()
+    await session.refresh(admin)
+    await session.refresh(teacher)
+    await session.refresh(student)
+    await session.refresh(super_admin)
+    
+    return {
+        "super_admin": super_admin,
+        "admin": admin,
+        "teacher": teacher,
+        "student": student,
+    }
+
+    
 
 @pytest.fixture(autouse=True)
-def auto_override_user(request):
+async def auto_override_user(request, users):
     mark = request.node.get_closest_marker("role")
-    role = Role.ADMIN
-    is_superuser = True
-
+    user = users['admin']
     if mark:
         role_name = mark.args[0]
         if role_name == 'student':
-            role = Role.STUDENT
-            is_superuser = False
+            user = users['student']
         elif role_name == 'teacher':
-            role = Role.TEACHER
-            is_superuser = False
+            user = users['teacher']
         elif role_name == 'admin':
-            role = Role.ADMIN
-            is_superuser = True
+            user = users['admin']
+        elif role_name == 'admin':
+            user = users['super_admin']
+
 
     async def override_user():
-        return User(
-            id=1,
-            email=f"{role.lower()}@test.com",
-            role=role,
-            is_active=True,
-            is_superuser=is_superuser
-        )
+        return user
+
 
     app.dependency_overrides[current_user] = override_user
+    if mark and mark.args[0] == 'super_admin':
+        app.dependency_overrides[current_super_user] = override_user
     yield
     app.dependency_overrides.pop(current_user, None)
+    app.dependency_overrides.pop(current_super_user, None)
 
 
 @pytest.fixture(autouse=True)
