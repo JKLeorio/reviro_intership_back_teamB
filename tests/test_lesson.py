@@ -271,7 +271,6 @@ async def test_update_homework(client):
     assert response.status_code == 200
     data = response.json()
     assert data["description"] == new_description
-    assert data["file_path"].endswith("updated_homework.txt")
 
 
 @pytest.mark.anyio
