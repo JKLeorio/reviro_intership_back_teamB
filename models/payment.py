@@ -3,7 +3,7 @@ from dateutil.relativedelta import relativedelta
 from typing import TYPE_CHECKING
 import uuid
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy import DateTime, ForeignKey, Integer, Enum, Float, UUID, Date, Boolean
+from sqlalchemy import DateTime, ForeignKey, Integer, Enum, Float, UUID, Date, Boolean, String
 
 from db.dbbase import Base
 from db.types import PaymentMethod, PaymentStatus, Currency, SubscriptionStatus, PaymentDetailStatus
@@ -76,3 +76,27 @@ class PaymentDetail(Base):
 
     student: Mapped["User"] = relationship('User', back_populates='payment_details')
     group: Mapped["Group"] = relationship('Group', back_populates='payment_details')
+
+
+class PaymentRequisite(Base):
+
+    __tablename__ = 'payment_requisites'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bank_name: Mapped[str] = mapped_column(String)
+    account: Mapped[str] = mapped_column(String)
+    qr: Mapped[str] = mapped_column(String)
+
+
+class PaymentCheck(Base):
+
+    __tablename__ = 'payment_check'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    check: Mapped[str] = mapped_column(String, nullable=False)
+    student_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete='SET NULL'), nullable=True)
+    group_id: Mapped[int | None] = mapped_column(ForeignKey("groups.id", ondelete='SET NULL'), nullable=True)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
+
+    student = relationship("User", back_populates="payment_checks")
+    group: Mapped["Group"] = relationship('Group', back_populates='payment_checks')

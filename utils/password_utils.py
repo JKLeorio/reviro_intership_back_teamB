@@ -5,6 +5,7 @@ alphabet = string.ascii_letters + string.digits
 
 PASSWORD_LENGTH = 15
 
+
 def generate_password() -> str:
     """
     Generate and return a password of length specified in PASSWORD_LENGTH

@@ -1,12 +1,14 @@
 import uvicorn
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from contextlib import asynccontextmanager
+
+from db.database import get_async_session
 
 from api.enrollment import enrollment_router
 from api.auth import authRouter
@@ -15,7 +17,8 @@ from api.lesson import (lesson_router, classroom_router, homework_router, homewo
                         homework_review_router)
 from api.group import group_students_router, group_router
 from api.user import user_router
-from api.payment import payment_router, subscription_router, payment_details, update_and_check_payments
+from api.payment import payment_router, subscription_router, payment_details, update_and_check_payments, \
+    payment_requisites, payment_checks_router
 from api.shedule import shedule_router
 from api.lesson_attendance import attendance_router
 
@@ -70,6 +73,9 @@ app.include_router(payment_router, prefix='/payment', tags=['Payments'])
 app.include_router(payment_details, prefix='/payment_details', tags=['Payment-details'])
 app.include_router(subscription_router, prefix='/subscription', tags=['Subscriptions'])
 app.include_router(user_router, prefix='/user', tags=['Users'])
+app.include_router(payment_requisites, prefix='/payment_requisites', tags=['Payment-requisites'])
+app.include_router(payment_checks_router, prefix='/checks', tags=["Payment-checks"])
+
 
 
 if __name__ == "__main__":
