@@ -28,35 +28,14 @@ from models.user import User
 from models.course import Course
 from schemas.lesson import LessonBase
 from schemas.shedule import SheduleGroup, SheduleLesson, SheduleResponse
-from utils.date_time_utils import get_current_time
+from utils.date_time_utils import get_current_time, get_week_start_end
 
 shedule_router = APIRouter()
 
 
 # current_calendar = calendar.Calendar()
 
-def get_week_start_end() -> List[datetime.datetime]:
-    current_time = get_current_time().date()
-    week_start = current_time - datetime.timedelta(
-        days=current_time.weekday()
-        )
-    week_end = week_start + datetime.timedelta(
-        days=6
-        )
-    return [week_start, week_end]
 
-
-# def SheduleItemFactory():
-#     return lambda: [{
-#         'group' : None,
-#         'lessons': list()
-#     }]
-
-# def SheduleItemFactory():
-#     return {
-#         'group' : None,
-#         'lessons': list()
-#     }
 
 def format_shedule(groups_lessons: Sequence[Group]) -> Dict:
     '''

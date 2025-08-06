@@ -122,6 +122,8 @@ class HomeworkRead(BaseModel):
 
     submissions: List["HomeworkSubmissionShort"] = []
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class HomeworkSubmissionShort(BaseModel):
     id: int
