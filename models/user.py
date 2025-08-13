@@ -50,3 +50,6 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     payment_details: Mapped[list["PaymentDetail"]] = relationship('PaymentDetail', back_populates='student')
     attendance: Mapped[list["Attendance"]] = relationship(back_populates="student")
     payment_checks: Mapped[List["PaymentCheck"]] = relationship(back_populates="student")
+
+    def __str__(self):
+        return f"({self.id}){self.email} <-> {self.first_name} {self.last_name}"
