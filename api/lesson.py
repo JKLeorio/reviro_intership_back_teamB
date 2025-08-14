@@ -28,6 +28,7 @@ from schemas.lesson import (
 )
 
 from utils.minio_client import minio_client
+from utils.ext_and_size_validation_file import validate_file
 
 from db.database import get_async_session
 
@@ -297,7 +298,7 @@ async def get_homeworks_for_user(user_id, db: AsyncSession):
     result = await db.execute(select(User).where(User.id == user_id).
                               options(selectinload(User.groups_joined)
                                       .selectinload(Group.lessons)
-                                      .selectinload(Lesson.homeworks)
+                                      .selectinload(Lesson.homework)
                                       )
                               )
     user = result.scalar_one_or_none()
@@ -354,6 +355,8 @@ async def create_homework(lesson_id: int, deadline: datetime = Form(),
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
     file_path = None
     if file:
+        await validate_file(file)
+        file.file.seek(0)
         file_path = await minio_client.upload_file(file)
 
     new_homework = Homework(
@@ -421,9 +424,11 @@ async def update_homework(homework_id: int, deadline: datetime = Form(),
     if description:
         homework.description = description
     if file:
+        await validate_file(file)
+        file.file.seek(0)
         if homework.file_path:
             try:
-                minio_client.client.remove_object(homework.file_path)
+                minio_client.client.remove_object(minio_client.bucket_name, homework.file_path)
             except:
                 pass
         file_path = await minio_client.upload_file(file)
@@ -505,6 +510,8 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
 
     file_path = None
     if file:
+        await validate_file(file)
+        file.file.seek(0)
         try:
             file_path = await minio_client.upload_file(file)
         except Exception as e:
@@ -686,6 +693,8 @@ async def update_homework_submission(submission_id: int, content: Optional[str] 
     if content:
         submission.content = content
     if file:
+        await validate_file(file)
+        file.file.seek(0)
         if submission.file_path:
             try:
                 minio_client.client.remove_object(minio_client.bucket_name, submission.file_path)

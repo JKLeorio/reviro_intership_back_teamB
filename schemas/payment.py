@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, List
 import uuid
 from pydantic import BaseModel, ConfigDict
 
@@ -7,6 +7,7 @@ from db.types import Currency, PaymentMethod, PaymentStatus, SubscriptionStatus,
 from models.payment import Payment, Subscription
 from schemas.course import CourseRelationBase
 from schemas.user import UserBase
+from schemas.group import GroupBase
 
 
 class SubscriptionBase(BaseModel):
@@ -86,10 +87,11 @@ class PaymentDetailBase(BaseModel):
     id: int
     student_id: int
     group_id: int
-    group_name: str
-    group_end: date
     deadline: date
     status: PaymentDetailStatus
+
+    group: GroupBase
+    student: UserBase
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -116,6 +118,9 @@ class PaymentDetailRead(BaseModel):
     current_month_number: int
     deadline: date
     status: PaymentDetailStatus
+
+    group: GroupBase
+    student: UserBase
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -144,8 +149,31 @@ class PaymentRequisiteUpdate(BaseModel):
 class PaymentCheckRead(BaseModel):
     id: int
     check: str
-    student_id: int
-    group_id: int
+    student_id: Optional[int] = None
+    group_id: int | None
+    uploaded_at: datetime
+
+    group: GroupBase
+    student: UserBase
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentCheckShort(BaseModel):
+    id: int
+    check: str
+    student_id: Optional[int] = None
+    group_id: Optional[int] = None
+    uploaded_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentShort(BaseModel):
+    id: int
+    check: str
+    student_id: Optional[int] = None
+    group_id: Optional[int] = None
     uploaded_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -154,5 +182,23 @@ class PaymentCheckRead(BaseModel):
 class PaymentCheckCreate(BaseModel):
     check: str
     group_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FinanceRow(BaseModel):
+    student_id: int
+    student_first_name: str
+    student_last_name: str
+    group_id: int
+    payment_detail_id: int | None
+    months_paid: int | None
+    current_month_number: int | None
+    payment_status: PaymentDetailStatus | None
+
+    group: GroupBase
+    checks: List[PaymentCheckShort]
+
+    group_course_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

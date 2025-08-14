@@ -45,4 +45,4 @@ class Group(Base):
 
     payment_details: Mapped[List["PaymentDetail"]] = relationship(back_populates="group")
 
-    payment_checks: Mapped[List["PaymentCheck"]] = relationship(back_populates='group')
+    payment_checks: Mapped[List["PaymentCheck"]] = relationship(back_populates='group', passive_deletes=True)
