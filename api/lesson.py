@@ -405,7 +405,7 @@ async def download_submission(homework_id: int, db: AsyncSession = Depends(get_a
 
 @homework_router.patch("/{homework_id}", response_model=HomeworkBase, status_code=status.HTTP_200_OK)
 async def update_homework(homework_id: int, deadline: datetime = Form(),
-                          description: Optional[str] = Form(None), file: Optional[UploadFile] = File(None),
+                          description: Optional[str] = Form(None), file: UploadFile | str = File(None),
                           db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
     '''
