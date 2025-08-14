@@ -24,7 +24,8 @@ from api.payment import payment_router, subscription_router, payment_details, up
 from api.shedule import shedule_router
 from api.lesson_attendance import attendance_router
 from admin.auth import admin_authentication_backend
-
+from api.finance import finance_router
+from api.export import export_router
 
 scheduler = AsyncIOScheduler()
 logging.basicConfig(level=logging.INFO)
@@ -86,7 +87,8 @@ app.include_router(subscription_router, prefix='/subscription', tags=['Subscript
 app.include_router(user_router, prefix='/user', tags=['Users'])
 app.include_router(payment_requisites, prefix='/payment_requisites', tags=['Payment-requisites'])
 app.include_router(payment_checks_router, prefix='/checks', tags=["Payment-checks"])
-
+app.include_router(export_router)
+app.include_router(finance_router, prefix='/finance', tags=['Finance'])
 
 
 if __name__ == "__main__":
