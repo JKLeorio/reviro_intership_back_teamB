@@ -2,14 +2,13 @@ import logging
 import uuid
 import os
 from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional
+from math import ceil
+from typing import Dict, List, Optional, Annotated
 
 from dateutil.relativedelta import relativedelta
 from fastapi import Depends, HTTPException, routing, status, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
-from fastapi_filter.base.filter import FilterDepends
-from fastapi_filter.contrib.sqlalchemy import Filter
-from sqlalchemy import select
+from sqlalchemy import select, and_, desc, or_, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -17,6 +16,7 @@ from fastapi_filter.contrib.sqlalchemy import Filter
 from fastapi_filter.base.filter import FilterDepends
 
 from api.auth import current_admin_user, current_user, current_student_user
+from api.utils import validate_related_fields
 from db.database import get_async_session
 from db.dbbase import Base
 from db.types import (Currency, PaymentDetailStatus, PaymentMethod,
@@ -30,9 +30,12 @@ from schemas.payment import (PaymentCreate, PaymentDetailBase, PaymentDetailUpda
                              PaymentDetailRead, PaymentPartialUpdate, PaymentRequisiteRead,
                              PaymentResponse, PaymentUpdate, PaymentCheckRead,
                              SubscriptionCreate, SubscriptionPartialUpdate,
-                             SubscriptionResponse, SubscriptionUpdate)
+                             SubscriptionResponse, SubscriptionUpdate, PaymentShort, FinanceRow)
+from schemas.pagination import PaginatedResponse, Pagination
 
+from utils.ext_and_size_validation_file import validate_file
 from utils.minio_client import minio_client
+from utils.checks_filters import CheckParams, build_checks_query, build_finance_query
 
 subscription_router = routing.APIRouter()
 payment_router = routing.APIRouter()
@@ -504,22 +507,22 @@ async def inactivate_payment(student_id: int, group_id: int, db: AsyncSession):
 @payment_details.get("/payments", response_model=List[PaymentDetailRead], status_code=status.HTTP_200_OK)
 async def get_payments_detail(group_id: Optional[int] = Query(default=None),
                               student_id: Optional[int] = Query(default=None),
+                              payment_status: Optional[PaymentDetailStatus] = Query(default=None),
                               db: AsyncSession = Depends(get_async_session),
                               user: User = Depends(current_admin_user)):
-    if (not group_id and not student_id) or (group_id and student_id):
+    filters = []
+    if payment_status is not None:
+        filters.append(PaymentDetail.status == payment_status)
+    if group_id is not None:
+        filters.append(PaymentDetail.group_id == group_id)
+    if student_id is not None:
+        filters.append(PaymentDetail.student_id == student_id)
+    if student_id is None and group_id is None:
         raise HTTPException(status_code=400, detail="Should provide either student_id or group_id")
-    if group_id:
-        group_exists = await db.execute(select(Group.id).where(Group.id == group_id))
-        if not group_exists.scalars().first():
-            raise HTTPException(status_code=404, detail=f"Group with id={group_id} not found")
-        result = await db.execute(select(PaymentDetail).where(PaymentDetail.group_id == group_id))
-
-    else:
-        student_exists = await db.execute(select(User.id).where(User.id == student_id))
-        if not student_exists.scalars().first():
-            raise HTTPException(status_code=404, detail=f"Student with id={student_id} not found")
-        result = await db.execute(select(PaymentDetail).where(PaymentDetail.student_id == student_id))
-
+    result = await db.execute(select(PaymentDetail).where(and_(*filters)).options(
+        selectinload(PaymentDetail.group),
+        selectinload(PaymentDetail.student)
+    ))
     return result.scalars().all()
 
 
@@ -550,11 +553,17 @@ async def update_and_check_payments():
 
 async def get_payment_by_id_or_pair(db: AsyncSession, payment_id: Optional[int], group_id: Optional[int],
                                     student_id: Optional[int]):
-    if payment_id:
-        return await db.get(PaymentDetail, payment_id)
+    if payment_id is not None:
+        payment = await db.execute(select(PaymentDetail).where(PaymentDetail.id == payment_id).options(
+            selectinload(PaymentDetail.group),
+            selectinload(PaymentDetail.student)))
+        return payment.scalar_one_or_none()
     elif student_id and group_id:
         result = await db.execute(select(PaymentDetail).where(PaymentDetail.group_id == group_id,
-                                                              PaymentDetail.student_id == student_id))
+                                                              PaymentDetail.student_id == student_id)
+                                  .options(selectinload(PaymentDetail.group),
+                                           selectinload(PaymentDetail.student)))
+
         return result.scalar_one_or_none()
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -576,22 +585,16 @@ async def get_payment_detail_by_id(payment_id: Optional[int] = Query(default=Non
 
 
 @payment_details.get('/my_payments', response_model=List[PaymentDetailBase], status_code=status.HTTP_200_OK)
-async def my_payment_details(db: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
-    result = await db.execute(select(PaymentDetail).options(selectinload(PaymentDetail.group))
-                              .where(PaymentDetail.student_id == user.id))
+async def my_payment_details(payment_status: Optional[PaymentDetailStatus] = Query(default=None),
+                             db: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
+    filters = [PaymentDetail.student_id == user.id]
+    if payment_status is not None:
+        filters.append(PaymentDetail.status == payment_status)
+    result = await db.execute(select(PaymentDetail).options(selectinload(PaymentDetail.group),
+                                                            selectinload(PaymentDetail.student))
+                              .where(and_(*filters)))
     payments = result.scalars().all()
-    return [
-        PaymentDetailBase(
-            id=p.id,
-            student_id=p.student_id,
-            group_id=p.group_id,
-            group_name=p.group.name if p.group else "",
-            group_end=p.group.end_date if p.group and p.group.end_date else "",
-            deadline=p.deadline,
-            status=p.status
-        )
-        for p in payments
-    ]
+    return payments
 
 
 @payment_details.patch('/', response_model=PaymentDetailRead, status_code=status.HTTP_200_OK)
@@ -704,9 +707,17 @@ async def get_requisite_by_id(requisite_id: int, db: AsyncSession = Depends(get_
 
 @payment_requisites.get('/', response_model=List[PaymentRequisiteRead])
 async def get_requisites_list(db: AsyncSession = Depends(get_async_session)):
-    result = await db.execute(select(PaymentRequisite))
-    requisites = result.scalars().all()
-    return requisites
+    res = await db.execute(select(PaymentRequisite))
+    items = res.scalars().all()
+    return [
+        PaymentRequisiteRead(
+            id=i.id,
+            bank_name=i.bank_name,
+            account=i.account,
+            qr=minio_client.get_file_url(i.qr) if i.qr else None,
+        )
+        for i in items
+    ]
 
 
 @payment_requisites.delete("/{requisite_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -723,8 +734,8 @@ async def destroy_requisite_by_id(requisite_id: int, db: AsyncSession = Depends(
     return {"detail": "Payment requisite has been deleted"}
 
 
-@payment_checks_router.post('/', response_model=PaymentCheckRead)
-async def create_payment_check(group_id: int, check: UploadFile = File(None),
+@payment_checks_router.post('/', response_model=PaymentShort, status_code=status.HTTP_201_CREATED)
+async def create_payment_check(group_id: int, check: UploadFile = File(...),
                                db: AsyncSession = Depends(get_async_session),
                                user: User = Depends(current_student_user)):
 
@@ -732,6 +743,18 @@ async def create_payment_check(group_id: int, check: UploadFile = File(None),
     if group is None:
         raise HTTPException(status_code=404, detail="Group not found")
 
+    is_member = await db.scalar(
+        select(Group.id)
+        .where(
+            Group.id == group_id,
+            Group.students.any(User.id == user.id),
+        )
+        .limit(1)
+    )
+
+    if not is_member and user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Not allowed for this group")
+    await validate_file(check)
     try:
         file_path = await minio_client.upload_file(check)
     except Exception as e:
@@ -744,7 +767,16 @@ async def create_payment_check(group_id: int, check: UploadFile = File(None),
     db.add(new_check)
     await db.commit()
     await db.refresh(new_check)
-    return new_check
+    row = await db.execute(
+        select(PaymentCheck)
+        .options(
+            selectinload(PaymentCheck.group),
+            selectinload(PaymentCheck.student)
+        )
+        .where(PaymentCheck.id == new_check.id)
+    )
+    new_check_loaded = row.scalar_one()
+    return new_check_loaded
 
 
 async def get_check_or_none(check_id: int, db: AsyncSession):
@@ -754,12 +786,11 @@ async def get_check_or_none(check_id: int, db: AsyncSession):
     return check
 
 
-@payment_checks_router.get("/{check_id}/download",
-                                name="download_check")
+@payment_checks_router.get("/{check_id}/download", name="download_check")
 async def download_check(check_id: int, db: AsyncSession = Depends(get_async_session),
-                              user: User = Depends(current_student_user)):
+                         user: User = Depends(current_student_user)):
     check = await get_check_or_none(check_id, db)
-    if user.id != check.student_id and user.role not in (Role.TEACHER, Role.ADMIN):
+    if user.id != check.student_id and user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
 
     if not check.check:
@@ -777,21 +808,24 @@ async def download_check(check_id: int, db: AsyncSession = Depends(get_async_ses
 
 
 @payment_checks_router.patch('/{check_id}', response_model=PaymentCheckRead)
-async def update_payment_check(check_id: int, group_id: Optional[int] = Form(None),
-                                    file: Optional[UploadFile] = File(None),
+async def update_payment_check(check_id: int, group_id: Optional[int] = None,
+                                    file: UploadFile | str | None = File(None),
                                     db: AsyncSession = Depends(get_async_session),
                                     user: User = Depends(current_admin_user)):
+
     check = await get_check_or_none(check_id, db)
+    if not check:
+        raise HTTPException(status_code=404, detail="Check not found")
     if check.student_id != user.id and user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
-    if group_id:
-        try:
-            group_id_int = int(group_id)
-            check.group_id = group_id_int
-        except ValueError:
-            raise HTTPException(status_code=400, detail="group_id must be a valid integer")
+    if group_id is not None:
+        g = await db.get(Group, group_id)
+        if g is None:
+            raise HTTPException(status_code=404, detail="Group not found")
+        check.group_id = group_id
 
     if file:
+        await validate_file(file)
         if check.check:
             try:
                 minio_client.client.remove_object(minio_client.bucket_name, check.check)
@@ -801,6 +835,15 @@ async def update_payment_check(check_id: int, group_id: Optional[int] = Form(Non
         check.check = check_path
     await db.commit()
     await db.refresh(check)
+    row = await db.execute(
+        select(PaymentCheck)
+        .options(
+            selectinload(PaymentCheck.student),
+            selectinload(PaymentCheck.group)
+        )
+        .where(PaymentCheck.id == check_id)
+    )
+    check = row.scalar_one()
     return check
 
 
@@ -813,30 +856,33 @@ async def get_checks_by_user_id(user_id: int, db: AsyncSession = Depends(get_asy
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    result = await db.execute(select(PaymentCheck).where(PaymentCheck.student_id == user_id))
+    result = await db.execute(select(PaymentCheck).where(PaymentCheck.student_id == user_id)
+                              .options(selectinload(PaymentCheck.group),
+                                       selectinload(PaymentCheck.student)))
     checks = result.scalars().all()
     return checks
 
 
-@payment_checks_router.get('/group/{group_id}', response_model=List[PaymentCheckRead])
-async def get_checks_by_group_id(group_id: int, db: AsyncSession = Depends(get_async_session),
-                                    user: User = Depends(current_admin_user)):
-    group = await db.get(Group, group_id)
-    if group is None:
-        raise HTTPException(status_code=404, detail="Group not found")
+@payment_checks_router.get('/my', response_model=List[PaymentCheckRead])
+async def get_all_my_checks(group_id: Optional[int] = None, db: AsyncSession = Depends(get_async_session),
+                                user: User = Depends(current_student_user)):
+    filters = [PaymentCheck.student_id == user.id]
+    if group_id is not None:
+        filters.append(PaymentCheck.group_id == group_id)
+    result = await db.execute(select(PaymentCheck).where(and_(*filters))
+                              .options(selectinload(PaymentCheck.group),
+                                       selectinload(PaymentCheck.student)))
+    return result.scalars().all()
 
-    result = await db.execute(select(PaymentCheck).where(PaymentCheck.group_id == group_id))
-    checks = result.scalars().all()
-    return checks
 
-
-@payment_checks_router.get('/{check_id}', response_model=PaymentCheckRead)
-async def get_check_by_id(check_id: int, db: AsyncSession = Depends(get_async_session),
-                                    user: User = Depends(current_admin_user)):
-    check = await db.get(PaymentCheck, check_id)
-    if check is None:
-        raise HTTPException(status_code=404, detail='Check not found')
-    return check
+@payment_checks_router.get('/', response_model=List[PaymentCheckRead])
+async def get_checks_by_group_id(group_id: Optional[int] = None,
+                                 student_id: Optional[int] = None,
+                                 db: AsyncSession = Depends(get_async_session),
+                                 user: User = Depends(current_admin_user)):
+    params = CheckParams(group_id=group_id, student_id=student_id)
+    q = await db.execute(build_checks_query(params))
+    return q.unique().scalars().all()
 
 
 @payment_checks_router.delete("/{check_id}", status_code=status.HTTP_200_OK)

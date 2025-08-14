@@ -128,6 +128,7 @@ async def user_profile(
         return await get_teacher_profile_data(user.id, session)
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
+
 @user_router.get(
     '/data', 
     response_model=UserResponse,

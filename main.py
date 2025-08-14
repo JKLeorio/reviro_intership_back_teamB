@@ -5,10 +5,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-
+from sqladmin import Admin
 from contextlib import asynccontextmanager
 
-from db.database import get_async_session
+from admin.course import CourseAdmin, LanguageAdmin, LevelAdmin
+from admin.group import GroupAdmin
+from db.database import get_async_session, engine
 
 from api.enrollment import enrollment_router
 from api.auth import authRouter
@@ -21,7 +23,9 @@ from api.payment import payment_router, subscription_router, payment_details, up
     payment_requisites, payment_checks_router
 from api.shedule import shedule_router
 from api.lesson_attendance import attendance_router
-
+from admin.auth import admin_authentication_backend
+from api.finance import finance_router
+from api.export import export_router
 
 scheduler = AsyncIOScheduler()
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +44,14 @@ async def lifespan(app: FastAPI):
         logging.info("Scheduler stopped")
 
 app = FastAPI(lifespan=lifespan)
+
+admin = Admin(app, engine, authentication_backend=admin_authentication_backend)
+
+admin.add_view(GroupAdmin)
+admin.add_view(LanguageAdmin)
+admin.add_view(LevelAdmin)
+admin.add_view(CourseAdmin)
+
 
 origins = ['*']
 
@@ -75,6 +87,8 @@ app.include_router(subscription_router, prefix='/subscription', tags=['Subscript
 app.include_router(user_router, prefix='/user', tags=['Users'])
 app.include_router(payment_requisites, prefix='/payment_requisites', tags=['Payment-requisites'])
 app.include_router(payment_checks_router, prefix='/checks', tags=["Payment-checks"])
+app.include_router(export_router)
+app.include_router(finance_router, prefix='/finance', tags=['Finance'])
 
 
 if __name__ == "__main__":
