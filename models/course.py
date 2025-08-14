@@ -23,6 +23,8 @@ class Language(Base):
 
     courses: Mapped[List["Course"]] = relationship(back_populates="language")
 
+    def __str__(self):
+        return f"({self.id}) {self.name}"
 
 class Level(Base):
 
@@ -35,6 +37,9 @@ class Level(Base):
 
     courses: Mapped[List["Course"]] = relationship(back_populates='level', cascade="all, delete-orphan",
                                                    passive_deletes=True)
+    
+    def __str__(self):
+        return f"({self.id}) {self.code}"
 
 
 class Course(Base):
@@ -67,3 +72,6 @@ class Course(Base):
 
     #Временно cascade
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="course", cascade="all, delete-orphan")
+
+    def __str__(self):
+        return f"({self.id}) {self.name}"

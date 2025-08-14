@@ -70,6 +70,9 @@ class Lesson(Base):
     @property
     def classroom_name(self) -> str | None:
         return self.classroom.name if self.classroom else None
+    
+    def __str__(self):
+        return f"({self.id}) {self.name}"
 
 
 class Homework(Base):
@@ -90,6 +93,9 @@ class Homework(Base):
     submissions: Mapped[List["HomeworkSubmission"]] = relationship('HomeworkSubmission', back_populates='homework',
                                                                    lazy="selectin",
                                                                    cascade='all, delete-orphan')
+
+    def __str__(self):
+        return f"({self.id}) {self.__name__}"
 
 
 class HomeworkSubmission(Base):
@@ -120,6 +126,9 @@ class HomeworkReview(Base):
     submission = relationship('HomeworkSubmission', back_populates='review', passive_deletes=True)
     teacher = relationship('User')
 
+    def __str__(self):
+        return f"({self.id}) {self.__name__}"
+
 
 class Attendance(Base):
     __tablename__ = 'attendances'
@@ -142,3 +151,6 @@ class Attendance(Base):
         "Lesson", 
         back_populates="attendance"
         )
+    
+    def __str__(self):
+        return f"({self.id}) {self.__name__} {self.status}"
