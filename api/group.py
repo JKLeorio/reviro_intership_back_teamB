@@ -15,6 +15,8 @@ from api.auth import (
     current_teacher_user,
     current_admin_user
     )
+
+from api.utils import validate_related_fields
 from api.payment import create_initial_payment, inactivate_payment
 from models.payment import PaymentDetail
 from db.types import AttendanceStatus, PaymentDetailStatus, Role
@@ -95,6 +97,17 @@ group_students_router = routing.APIRouter()
 #             )
 #     return response
 
+
+async def group_relates(group_data, session):
+    relates = {}
+
+    if group_data.course_id is not None:
+        relates[Course] = group_data.course_id
+    if group_data.teacher_id is not None:
+        relates[User] = group_data.teacher_id
+
+    if relates:
+        await validate_related_fields(relates, session)
 
 
 @group_students_router.get(
@@ -414,6 +427,10 @@ async def group_create(
     '''
     Returns a list of groups
     '''
+    relates = {}
+
+    await group_relates(group_data, session)
+
     new_group = Group(**group_data.model_dump())
     session.add(new_group)
     await session.commit()
@@ -440,14 +457,14 @@ async def group_update(
     if not group:
         raise HTTPException(detail={"detail" : "group doesn't exist"},
                              status_code=status.HTTP_404_NOT_FOUND)
+    await group_relates(group_data, session)
+
     for key, value in group_data.model_dump().items():
         setattr(group, key, value)
     await session.commit()
     await session.refresh(group, attribute_names=['teacher'])
     return group
     
-    
-
 
 @group_router.patch(
         "/{group_id}",
@@ -468,6 +485,8 @@ async def group_partial_update(
     if not group:
         raise HTTPException(detail={"detail" : "group doesn't exist"},
                             status_code=status.HTTP_404_NOT_FOUND)
+    await group_relates(group_data, session)
+
     for key, value in group_data.model_dump(exclude_unset=True).items():
         setattr(group, key, value)
     await session.commit()

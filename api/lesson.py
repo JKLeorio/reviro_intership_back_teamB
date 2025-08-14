@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload, joinedload
 
 
 from api.auth import current_student_user, current_teacher_user, current_admin_user
+from api.utils import validate_related_fields
 from db.types import AttendanceStatus, Role
 
 from models.group import Group
@@ -60,6 +61,15 @@ def get_group_students(group):
     return students_ids
 
 
+async def is_classroom_exists(name, db):
+    existing_room = await db.scalar(select(Classroom).where(Classroom.name.ilike(name)))
+    if existing_room:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Classroom with name '{name}' already exists"
+        )
+
+
 @classroom_router.get('/', response_model=List[ClassroomRead], status_code=status.HTTP_200_OK)
 async def get_all_classrooms(db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
     '''
@@ -85,6 +95,7 @@ async def create_classroom(data: ClassroomCreate, db: AsyncSession = Depends(get
     '''
     Creates a classroom from the submitted data
     '''
+    await is_classroom_exists(name=data.name, db=db)
     data = data.model_dump()
     new_classroom = Classroom(**data)
     db.add(new_classroom)
@@ -187,8 +198,12 @@ async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSessi
     '''
     group = await get_group_or_404(group_id, db)
 
-    # if group.teacher_id != user.id:
-    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
+    if user.role not in (Role.TEACHER, Role.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
+
+    relates = {User: lesson_data.teacher_id, Classroom: lesson_data.classroom_id}
+
+    await validate_related_fields(relates, session=db)
 
     new_lesson_data = lesson_data.model_dump()
     new_lesson_data['group_id'] = group_id
@@ -238,6 +253,17 @@ async def update_lesson(lesson_data: LessonUpdate, lesson_id: int,
 
     if lesson.teacher_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
+
+    relates = {}
+
+    if lesson_data.teacher_id is not None:
+        relates[User] = lesson_data.teacher_id
+    if lesson_data.group_id is not None:
+        relates[Group] = lesson_data.group_id
+    if lesson_data.classroom_id is not None:
+        relates[Classroom] = lesson_data.classroom_id
+    if relates:
+        await validate_related_fields(relates, db)
 
     new_data = lesson_data.model_dump(exclude_unset=True)
     for key, value in new_data.items():
@@ -379,7 +405,7 @@ async def download_submission(homework_id: int, db: AsyncSession = Depends(get_a
 
 @homework_router.patch("/{homework_id}", response_model=HomeworkBase, status_code=status.HTTP_200_OK)
 async def update_homework(homework_id: int, deadline: datetime = Form(),
-                          description: Optional[str] = Form(None), file: Optional[UploadFile] = File(None),
+                          description: Optional[str] = Form(None), file: UploadFile | str = File(None),
                           db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
     '''

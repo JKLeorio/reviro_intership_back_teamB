@@ -65,6 +65,16 @@ async def is_teacher_attendance_owner(
     return
 
 
+async def attendance_relates(attendance_data, session):
+    data = attendance_data.model_dump(exclude_unset=True)
+    relates = {}
+    if 'student_id' in data:
+        relates[User] = data['student_id']
+    if 'lesson_id' in data:
+        relates[Lesson] = data['lesson_id']
+    if relates:
+        await validate_related_fields(relates, session)
+
 
 class AttendanceFilter(Filter):
     status__in: Optional[list[AttendanceStatus]] = None
@@ -215,7 +225,6 @@ async def attendance_detail(
     return attendance
 
 
-
 @attendance_router.post(
     '/',
     response_model=AttendanceResponse,
@@ -235,6 +244,8 @@ async def attendance_create(
 
     ADMIN -> has no restrictions
     '''
+
+    await validate_related_fields(attendance_data, session)
     smtm = select(Attendance).where(
             Attendance.student_id == attendance_data.student_id,
             Attendance.lesson_id == attendance_data.lesson_id
@@ -245,20 +256,11 @@ async def attendance_create(
             status_code=status.HTTP_409_CONFLICT,
             detail='attendance exists'
         )
-    await validate_related_fields(
-        {
-            User : attendance_data.student_id,
-            Lesson : attendance_data.lesson_id
-        },
-        session
-    )
     attendance = Attendance(**attendance_data.model_dump())
     session.add(attendance)
     await session.commit()
     await session.refresh(attendance, attribute_names=['student'])
     return attendance
-
-
 
 
 @attendance_router.put(
@@ -288,15 +290,9 @@ async def attendance_update(
             detail='attendance not found'
         )
     if user.role == Role.TEACHER:
-        is_teacher_attendance_owner(user.id, attendance_id, session)
+        await is_teacher_attendance_owner(user.id, attendance_id, session)
 
-    await validate_related_fields(
-        {
-            User : attendance_data.student_id,
-            Lesson : attendance_data.lesson_id
-        },
-        session
-    )
+    await attendance_relates(attendance_data, session)
 
     for key, value in attendance_data.model_dump().items():
         setattr(attendance,key,value)
@@ -304,8 +300,6 @@ async def attendance_update(
     await session.commit()
     await session.refresh(attendance, attribute_names=['student'])
     return attendance
-
-
 
 
 @attendance_router.patch(
@@ -336,18 +330,9 @@ async def attendance_partial_update(
         )
     
     if user.role == Role.TEACHER:
-        is_teacher_attendance_owner(user.id, attendance_id, session)
+       await is_teacher_attendance_owner(user.id, attendance_id, session)
 
-    fields_for_validation = {}
-    if attendance_data.student_id is not None:
-        fields_for_validation[User] = attendance_data.student_id
-    if attendance_data.lesson_id is not None:
-        fields_for_validation[Lesson] = attendance_data.lesson_id
-
-    await validate_related_fields(
-        fields_for_validation,
-        session
-    )
+    await attendance_relates(attendance_data, session)
 
     for key, value in attendance_data.model_dump(exclude_unset=True).items():
         setattr(attendance,key,value)
@@ -355,8 +340,6 @@ async def attendance_partial_update(
     await session.commit()
     await session.refresh(attendance, attribute_names=['student'])
     return attendance
-
-
 
 
 @attendance_router.delete(
@@ -378,7 +361,7 @@ async def attendance_delete(
     ADMIN -> has no restrictions
     '''
     if user.role == Role.TEACHER:
-        is_teacher_attendance_owner(user.id, attendance_id, session)
+        await is_teacher_attendance_owner(user.id, attendance_id, session)
     attendance = await session.get(Attendance, attendance_id)
     if attendance is None:
         raise HTTPException(
