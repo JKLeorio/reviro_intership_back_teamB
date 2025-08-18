@@ -59,7 +59,10 @@ class PaymentBase(BaseModel):
 class PaymentResponse(PaymentBase):
     subscription: SubscriptionBase
     owner: UserBase
-    
+    stripe_session_id: Optional[str] = None
+    stripe_payment_intent_id: Optional[str] = None
+    customer_email: Optional[str] = None
+
 
 class PaymentCreate(BaseModel):
     amount: float
@@ -202,3 +205,23 @@ class FinanceRow(BaseModel):
     group_course_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StripeCheckoutRequest(BaseModel):
+    subscription_id: uuid.UUID
+    customer_email: str
+    success_url: Optional[str] = None
+    cancel_url: Optional[str] = None
+
+class StripeCheckoutResponse(BaseModel):
+    checkout_url: str
+    session_id: str
+
+class StripePaymentCreate(BaseModel):
+    amount: float
+    customer_email: str
+    subscription_id: uuid.UUID
+    stripe_session_id: str
+    payment_method: PaymentMethod = PaymentMethod.STRIPE
+    payment_status: PaymentStatus = PaymentStatus.PENDING
+    currency: Currency = Currency.USD
