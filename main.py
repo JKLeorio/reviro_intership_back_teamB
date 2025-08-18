@@ -27,6 +27,7 @@ from api.lesson_attendance import attendance_router
 from admin.auth import admin_authentication_backend
 from api.finance import finance_router
 from api.export import export_router
+from utils.smtp_client import init_smtp, send_email
 
 scheduler = AsyncIOScheduler()
 logging.basicConfig(level=logging.INFO)
@@ -39,10 +40,15 @@ async def lifespan(app: FastAPI):
         scheduler.add_job(update_and_check_payments, trigger)
         scheduler.start()
         logging.info("Scheduler started")
+        app.state.smtp_client = await init_smtp()
+        logging.info("SMTP started")
         yield
     finally:
         scheduler.shutdown()
         logging.info("Scheduler stopped")
+        if getattr(app.state, "smtp_client", None):
+            await app.state.smtp_client.quit()
+        logging.info("SMTP stopped")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -92,6 +98,7 @@ app.include_router(payment_requisites, prefix='/payment_requisites', tags=['Paym
 app.include_router(payment_checks_router, prefix='/checks', tags=["Payment-checks"])
 app.include_router(export_router)
 app.include_router(finance_router, prefix='/finance', tags=['Finance'])
+
 
 
 if __name__ == "__main__":
