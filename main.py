@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 from admin.course import CourseAdmin, LanguageAdmin, LevelAdmin
 from admin.group import GroupAdmin
+from admin.lesson import AttendanecAdmin, ClassroomAdmin
 from db.database import get_async_session, engine
 
 from api.enrollment import enrollment_router
@@ -50,7 +51,9 @@ admin = Admin(app, engine, authentication_backend=admin_authentication_backend)
 admin.add_view(GroupAdmin)
 admin.add_view(LanguageAdmin)
 admin.add_view(LevelAdmin)
+admin.add_view(ClassroomAdmin)
 admin.add_view(CourseAdmin)
+admin.add_view(AttendanecAdmin)
 
 
 origins = ['*']

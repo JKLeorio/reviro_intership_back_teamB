@@ -24,6 +24,9 @@ class Classroom(Base):
 
     lessons: Mapped[List["Lesson"]] = relationship(back_populates='classroom', cascade="all, delete-orphan")
 
+    def __str__(self):
+        return f"Classroom ({self.id}) name"
+
 
 class Lesson(Base):
     __tablename__ = 'lessons'
@@ -112,6 +115,9 @@ class HomeworkSubmission(Base):
     review: Mapped['HomeworkReview'] = relationship('HomeworkReview', back_populates='submission',
                                                     cascade='all, delete-orphan')
     student = relationship('User')
+    
+    def __str__(self):
+        return f"({self.id}) {self.code}"
 
 
 class HomeworkReview(Base):
