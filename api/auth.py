@@ -1,6 +1,7 @@
 import contextlib
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi_users import FastAPIUsers, fastapi_users
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,9 +9,9 @@ from api.permissions import require_roles
 from models.group import Group
 from models.user import User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, StudentWithGroupResponse, UserCreate, UserRegister, UserResponse, AdminRegister
+from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, StudentWithGroupResponse, TeacherRegister, TeacherWithGroupResponse, UserCreate, UserRegister, UserResponse, AdminRegister
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
-from typing import Optional
+from typing import Any, Optional
 from decouple import config
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from utils.password_utils import generate_password
@@ -119,9 +120,6 @@ async def register_admin(
     user_data_dump['password'] = password
     
     user = await user_manager.create(AdminCreate(**user_data_dump))
-
-    #Password sending logic here, for example sending into user email
-    #smtp_server.send(message=f'here your password {password} for {url}')
     
     response = UserResponse.model_validate(user)
     response.password = password
@@ -149,26 +147,19 @@ async def register_user(
     user_data_dump['password'] = password
     user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
 
-    #Password sending logic here, for example sending into user email
-    #smtp_server.send(message=f'here your password {password} for {url}')
-
     response = UserResponse.model_validate(user)
     response.password = password
     return response
 
 
-@authRouter.post(
-    "/register-student-with-group/{group_id}",
-    response_model=StudentWithGroupResponse,
-    status_code=status.HTTP_201_CREATED
-    )
-async def register_student_with_group(
-    group_id: int,
-    user_data: StudentRegister,
-    user_manager: UserManager = Depends(get_user_manager),
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user)
-):
+
+
+async def register_user_with_group(
+        group_id: int, 
+        session: AsyncSession,
+        user_manager: UserManager,
+        user_data: BaseModel,
+        ):
     group = await session.get(
         Group, 
         group_id, 
@@ -188,9 +179,6 @@ async def register_student_with_group(
     user_data_dump['password'] = password
     new_user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
 
-    #Password sending logic here, for example sending into user email
-    #smtp_server.send(message=f'here your password {password} for {url}')
-
     new_user = await session.merge(new_user)
     await session.refresh(new_user)
     await session.refresh(group, attribute_names=['students'])
@@ -200,8 +188,59 @@ async def register_student_with_group(
         group.students.append(new_user)
     await session.commit()
     await session.refresh(new_user)
+    return {
+        'user' : new_user,
+        'group' : group
+    }
 
+
+@authRouter.post(
+    "/register-student-with-group/{group_id}",
+    response_model=StudentWithGroupResponse,
+    status_code=status.HTTP_201_CREATED
+    )
+async def register_student_with_group(
+    group_id: int,
+    user_data: StudentRegister,
+    user_manager: UserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)
+):
+    result = await register_user_with_group(
+        group_id=group_id,
+        session=session,
+        user_manager=user_manager,
+        user_data=user_data
+    )
+    new_user = result['user']
+    group = result['group']
     return StudentWithGroupResponse(
+        **(UserResponse.model_validate(new_user).model_dump()),
+        group_id=group_id
+    )
+
+
+@authRouter.post(
+    "/register-teacher-with-group/{group_id}",
+    response_model=TeacherWithGroupResponse,
+    status_code=status.HTTP_201_CREATED
+    )
+async def register_teacher_with_group(
+    group_id: int,
+    user_data: TeacherRegister,
+    user_manager: UserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)
+):
+    result = await register_user_with_group(
+        group_id=group_id,
+        session=session,
+        user_manager=user_manager,
+        user_data=user_data
+    )
+    new_user = result['user']
+    group = result['group']
+    return TeacherWithGroupResponse(
         **(UserResponse.model_validate(new_user).model_dump()),
         group_id=group_id
     )

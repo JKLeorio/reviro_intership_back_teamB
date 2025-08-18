@@ -3,7 +3,7 @@ from typing import List, Literal, Optional, TYPE_CHECKING
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from fastapi_users import schemas
 
-from db.types import Role
+from db.types import PaymentDetailStatus, Role
 from schemas.course import ProfileCourse
 
 if TYPE_CHECKING:
@@ -60,6 +60,14 @@ class StudentResponse(BaseModel):
     id: int
     first_name: str
     last_name: str
+    phone_number: str
+    email: str
+    is_active: bool
+
+class StudentDetailResponse(StudentResponse):
+    payment_status: PaymentDetailStatus
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TeacherResponse(UserResponse):
@@ -107,5 +115,12 @@ class StudentProfile(UserBase):
 class StudentRegister(UserRegister):
     role: Literal[Role.STUDENT] = Role.STUDENT
 
+class TeacherRegister(UserRegister):
+    role: Literal[Role.TEACHER] = Role.TEACHER
+    description: Optional[str] = None
+
 class StudentWithGroupResponse(UserResponse):
+    group_id: int
+
+class TeacherWithGroupResponse(UserResponse):
     group_id: int

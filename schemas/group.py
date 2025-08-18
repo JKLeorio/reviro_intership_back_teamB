@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 from db.types import PaymentDetailStatus, PaymentStatus
 from schemas.course import CourseRead
 from schemas.pagination import Pagination
-from schemas.user import StudentResponse, TeacherResponse, UserResponse
+from schemas.user import StudentDetailResponse, StudentResponse, TeacherResponse, UserResponse
 
 
 class GroupBase(BaseModel):
@@ -96,11 +96,13 @@ class GroupStundentPartialUpdate(GroupPartialUpdate):
 class GroupStudentDetailResponse(BaseModel):
     student: StudentResponse
     payment_status: PaymentDetailStatus
-    attendance_ratio: float
-    
-
+    # attendance_ratio: float
 
 class GroupProfileResponse(BaseModel):
     groups: list[ProfileGroup]
     pagination: Pagination
 
+
+
+class GroupStudentDetailListResponse(GroupStudentResponse):
+    students: list[StudentDetailResponse]

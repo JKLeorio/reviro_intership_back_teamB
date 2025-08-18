@@ -1,7 +1,8 @@
 import pytest
 from fastapi import status
 
-from tests.fixtures.factories.schemas.user_schema_data_factory import StudentRegisterDataFactory
+from db.types import Role
+from tests.fixtures.factories.schemas.user_schema_data_factory import StudentRegisterDataFactory, TeacherRegisterDataFactory
 from tests.utils import dict_comparator
 
 
@@ -80,14 +81,15 @@ async def test_register_user_permission(client):
 
 @pytest.mark.anyio
 @pytest.mark.role('admin')
-async def test_register_user_with_group(
+async def test_register_student_with_group(
     client,
     modern_group_factory
     ):
     #Временно пока не модифицирую build контроллера для фабрик
     json = StudentRegisterDataFactory.build(
         email='zero@mail.com',
-        phone_number='1231324345'
+        phone_number='1231324345',
+        role=Role.STUDENT
         )
     group = await modern_group_factory()
     response = await client.post(
@@ -96,6 +98,27 @@ async def test_register_user_with_group(
         )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
-    print(data, json)
+    assert data['group_id'] == group.id
+    dict_comparator(json, data)
+
+@pytest.mark.anyio
+@pytest.mark.role('admin')
+async def test_register_teacher_with_group(
+    client,
+    modern_group_factory
+    ):
+    #Временно пока не модифицирую build контроллера для фабрик
+    json = TeacherRegisterDataFactory.build(
+        email='one@mail.com',
+        phone_number='4234234234',
+        role=Role.TEACHER
+        )
+    group = await modern_group_factory()
+    response = await client.post(
+        f'/auth/register-teacher-with-group/{group.id}', 
+        json=json
+        )
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
     assert data['group_id'] == group.id
     dict_comparator(json, data)
