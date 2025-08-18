@@ -194,7 +194,6 @@ class FinanceRow(BaseModel):
     payment_detail_id: int | None
     months_paid: int | None
     current_month_number: int | None
-    payment_status: PaymentDetailStatus | None
 
     group: GroupBase
     checks: List[PaymentCheckShort]

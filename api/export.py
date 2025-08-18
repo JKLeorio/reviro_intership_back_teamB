@@ -1,4 +1,4 @@
-from typing import Optional, Literal, Iterable, Callable, Tuple, Dict, Any, List
+from typing import Optional, Literal, Iterable, Any, List
 import io, csv, datetime as dt
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
@@ -8,14 +8,15 @@ from sqlalchemy.orm import selectinload
 from openpyxl import Workbook
 
 from db.database import get_async_session
+from db.types import Role, PaymentDetailStatus
 from api.auth import current_admin_user
-from models.user import User
+from models.user import User, student_group_association_table
+from models.course import Course
 from models.group import Group
 from models.payment import PaymentDetail, PaymentCheck
 from schemas.group import GroupBase
 from schemas.payment import FinanceRow, PaymentCheckShort
 from utils.checks_filters import CheckParams, build_checks_query
-from api.finance import get_finance
 
 
 export_router = APIRouter(prefix='/export', tags=["Export"])
@@ -40,6 +41,16 @@ def _xlsx_bytes(headers: List[str], rows: Iterable[List[Any]]):
         ws.append(r)
     bio = io.BytesIO(); wb.save(bio); bio.seek(0)
     return bio
+
+
+def extensions(format, headers, rows, filename):
+    if format == 'csv':
+        return StreamingResponse(_csv_stream(headers, rows()), media_type='text/csv',
+                                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+    bio = _xlsx_bytes(headers, rows())
+    return StreamingResponse(bio, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": f'attachment: filename="{filename}"'})
 
 
 @export_router.get('/checks')
@@ -79,13 +90,7 @@ async def export_checks(
             ]
     ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"checks_{ts}.{format}"
-    if format == 'csv':
-        return StreamingResponse(_csv_stream(headers, rows()), media_type='text/csv',
-                                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
-
-    bio = _xlsx_bytes(headers, rows())
-    return StreamingResponse(bio, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                             headers={"Content-Disposition": f'attachment: filename="{filename}"'})
+    return extensions(format, headers, rows, filename)
 
 
 @export_router.get('/finance')
@@ -135,20 +140,13 @@ async def export_finance(
     for user_obj, group_obj, detail_obj, check_obj in rows:
         key = (user_obj.id, group_obj.id)
         if key not in finance_map:
-            status_str = (
-                detail_obj.status.value
-                if (detail_obj and getattr(detail_obj, "status", None) is not None and hasattr(detail_obj.status,
-                                                                                               "value"))
-                else (
-                    str(detail_obj.status) if detail_obj and getattr(detail_obj, "status", None) is not None else None)
-            )
+
             finance_map[key] = FinanceRow(
                 student_id=user_obj.id,
                 student_first_name=user_obj.first_name or "",
                 student_last_name=user_obj.last_name or "",
                 group_id=group_obj.id,
                 payment_detail_id=detail_obj.id if detail_obj else None,
-                payment_status=status_str,
                 current_month_number=detail_obj.current_month_number,
                 months_paid=detail_obj.months_paid,
                 group=GroupBase.model_validate(group_obj),
@@ -163,7 +161,7 @@ async def export_finance(
         key=lambda x: (x.student_last_name.lower(), x.student_first_name.lower())
     )
 
-    headers = ["ID студента", "Фамилия", "Имя", "Группа", "Курс", "Текущий месяц", "Оплачено за месяц", "Статус оплаты"]
+    headers = ["ID студента", "Фамилия", "Имя", "Группа", "Курс", "Текущий месяц", "Оплачено (месяц)"]
 
     def row_data():
         for f in finance_list:
@@ -174,17 +172,117 @@ async def export_finance(
                 f.group.name if f.group else "",
                 f.group_course_name or "",
                 f.current_month_number or "",
-                f.months_paid or "",
-                f.payment_status or ""
+                f.months_paid or ""
             ]
 
     ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"finance_{ts}.{format}"
 
-    if format == 'csv':
-        return StreamingResponse(_csv_stream(headers, row_data()), media_type='text/csv',
-                                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+    return extensions(format, headers, row_data, filename)
 
-    bio = _xlsx_bytes(headers, row_data())
-    return StreamingResponse(bio, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+@export_router.get('/students')
+async def export_student(
+        format: Literal['csv', 'xlsx'] = Query("csv"),
+        group_id: Optional[int] = None,
+        search: Optional[str] = None,
+        db: AsyncSession = Depends(get_async_session),
+        user: User = Depends(current_admin_user)
+):
+
+    q = (
+        select(User, Group)
+        .join(student_group_association_table,
+              student_group_association_table.c.user_id == User.id)
+        .join(Group, Group.id == student_group_association_table.c.group_id)
+        .where(or_(User.role == getattr(Role, "STUDENT", 'student'),
+                   User.role == "student"))
+    )
+
+    conds = []
+    if group_id is not None:
+        g = await db.get(Group, group_id)
+        if g is None:
+            raise HTTPException(status_code=404, detail="Group not found")
+        conds.append(Group.id == group_id)
+    if search:
+        like = f"%{search}%"
+        conds.append(or_(User.first_name.ilike(like), User.last_name.ilike(like)))
+    if conds:
+        q = q.where(and_(*conds))
+
+    res = await db.execute(q)
+    pairs = res.unique().all()
+
+    headers = ["ID", "ФИО", "Группа", "Почта", "Телефон"]
+
+    def rows():
+        for u, g in pairs:
+            fio = " ".join(filter(None, [getattr(u, "last_name", ""), getattr(u, "first_name", "")])).strip()
+            email = getattr(u, "email", "") or ""
+            phone = (getattr(u, "phone", None)
+                     or getattr(u, "phone_number", None)
+                     or getattr(u, "telephone", None)
+                     or "")
+            yield [u.id, fio, getattr(g, "name", "") or "", email, phone]
+
+    ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"students_{ts}.{format}"
+    return extensions(format, headers, rows, filename)
+
+
+@export_router.get("/teachers")
+async def export_teachers(
+    format: Literal["csv", "xlsx"] = Query("csv"),
+    course_id: Optional[int] = Query(None, description="Фильтр по курсу"),
+    search: Optional[str] = Query(None, description="Поиск по имени/фамилии"),
+    db: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+):
+    q = (
+        select(User, Group)
+        .join(Group, Group.teacher_id == User.id)
+        .options(selectinload(Group.course))
+        .where(or_(User.role == getattr(Role, "TEACHER", "teacher"), User.role == "teacher"))
+    )
+
+    conds = []
+    if course_id is not None:
+        course = await db.get(Course, course_id)
+        if course is None:
+            raise HTTPException(status_code=404, detail="Course not found")
+        conds.append(Group.course_id == course_id)
+
+    if search:
+        like = f"%{search}%"
+        conds.append(or_(User.first_name.ilike(like), User.last_name.ilike(like)))
+
+    if conds:
+        q = q.where(and_(*conds))
+
+    res = await db.execute(q)
+    pairs = res.unique().all()
+
+    headers = ["ID", "ФИО", "Курс", "Почта", "Телефон"]
+
+    def rows():
+        seen = set()
+        for u, g in pairs:
+            key = (u.id, getattr(g, "course_id", None))
+            if key in seen:
+                continue
+            seen.add(key)
+
+            fio = " ".join(filter(None, [getattr(u, "last_name", ""), getattr(u, "first_name", "")])).strip()
+            email = getattr(u, "email", "") or ""
+            phone = (getattr(u, "phone", None)
+                     or getattr(u, "phone_number", None)
+                     or getattr(u, "telephone", None)
+                     or "")
+            course_name = getattr(getattr(g, "course", None), "name", "") or ""
+
+            yield [u.id, fio, course_name, email, phone]
+
+    ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"teachers_{ts}.{format}"
+    return extensions(format, headers, rows, filename)
