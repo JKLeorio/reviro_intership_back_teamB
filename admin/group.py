@@ -27,6 +27,21 @@ class GroupAdmin(ModelView, model = Group):
         Group.course,
         Group.teacher,
     ]
+    column_details_list = [
+        Group.id,
+        Group.name,
+        Group.created_at,
+        Group.start_date,
+        Group.approximate_lesson_start,
+        Group.end_date,
+        Group.is_active,
+        Group.is_archived,
+        Group.course,
+        Group.teacher,
+    ]
+    column_sortable_list = [
+        Group.id
+    ]
     # from_widget_args = {
     #     'id' : {
     #         'readonly' : True
