@@ -50,6 +50,7 @@ class PaymentMethod(str, Enum):
     BANK_TRANSFER = "bank_transfer"
     ONLINE = "online"
     PROMO = "promo"
+    STRIPE = "stripe"
 
 
 class Currency(str, Enum):
