@@ -111,13 +111,13 @@ async def register_admin(
     Register new admin, only for superadmin
     NOTE -> The email field when creating a user is used as the username when logging in.
     """
-    if await session.scalar(select(User).where(User.email == user_data.email)):
-        raise HTTPException(status_code=400, detail="Email already registered")
+    if await session.scalar(select(User).where(
+        User.email == user_data.email or User.phone_number == user_data.phone_number)):
+        raise HTTPException(status_code=400, detail="Email or phone already registered")
     password = generate_password()
     user_data_dump = user_data.model_dump()
     user_data_dump['password'] = password
     
-
     user = await user_manager.create(AdminCreate(**user_data_dump))
 
     #Password sending logic here, for example sending into user email
@@ -141,8 +141,9 @@ async def register_user(
     Register new user, only for admin
     NOTE -> The email field when creating a user is used as the username when logging in.
     """
-    if await session.scalar(select(User).where(User.email == user_data.email)):
-        raise HTTPException(status_code=400, detail="Email already registered")
+    if await session.scalar(select(User).where(
+        User.email == user_data.email or User.phone_number == user_data.phone_number)):
+        raise HTTPException(status_code=400, detail="Email or phone already registered")
     password = generate_password()
     user_data_dump = user_data.model_dump()
     user_data_dump['password'] = password
