@@ -1,6 +1,7 @@
 import pytest
 from fastapi import status
 
+from tests.fixtures.factories.schemas.user_schema_data_factory import StudentRegisterDataFactory
 from tests.utils import dict_comparator
 
 
@@ -75,3 +76,26 @@ async def test_register_user_permission(client):
         '/auth/register-user'
         )
     assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.anyio
+@pytest.mark.role('admin')
+async def test_register_user_with_group(
+    client,
+    modern_group_factory
+    ):
+    #Временно пока не модифицирую build контроллера для фабрик
+    json = StudentRegisterDataFactory.build(
+        email='zero@mail.com',
+        phone_number='1231324345'
+        )
+    group = await modern_group_factory()
+    response = await client.post(
+        f'/auth/register-student-with-group/{group.id}', 
+        json=json
+        )
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
+    print(data, json)
+    assert data['group_id'] == group.id
+    dict_comparator(json, data)

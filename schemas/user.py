@@ -103,3 +103,9 @@ class TeacherProfile(UserBase):
 
 class StudentProfile(UserBase):
     courses: list[ProfileCourse] = []
+
+class StudentRegister(UserRegister):
+    role: Literal[Role.STUDENT] = Role.STUDENT
+
+class StudentWithGroupResponse(UserResponse):
+    group_id: int
