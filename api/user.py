@@ -264,3 +264,21 @@ async def user_delete(
             )
     await user_manager.delete(user=user_to_delete)
     return
+
+@user_router.get(
+    '/teachers',
+    status_code=status.HTTP_200_OK
+)
+async def teacher_list(
+    
+):
+    pass
+
+@user_router.get(
+    '/students',
+    status_code=status.HTTP_200_OK
+)
+async def student_list(
+    
+):
+    pass

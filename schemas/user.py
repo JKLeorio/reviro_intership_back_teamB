@@ -64,7 +64,19 @@ class StudentResponse(BaseModel):
     email: str
     is_active: bool
 
-class StudentDetailResponse(StudentResponse):
+
+class UserFullnameResponse(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    phone_number: Optional[str] = None
+    role: Role
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StudentDetailResponse(UserFullnameResponse):
     payment_status: PaymentDetailStatus
 
     model_config = ConfigDict(from_attributes=True)
@@ -119,8 +131,9 @@ class TeacherRegister(UserRegister):
     role: Literal[Role.TEACHER] = Role.TEACHER
     description: Optional[str] = None
 
-class StudentWithGroupResponse(UserResponse):
-    group_id: int
 
-class TeacherWithGroupResponse(UserResponse):
+class StudentWithGroupResponse(UserFullnameResponse):
+    group_ids: list[int]
+
+class TeacherWithGroupResponse(UserFullnameResponse):
     group_id: int

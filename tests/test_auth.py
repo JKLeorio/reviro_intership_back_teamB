@@ -92,13 +92,19 @@ async def test_register_student_with_group(
         role=Role.STUDENT
         )
     group = await modern_group_factory()
+    group2 = await modern_group_factory()
+    params = {
+        'group_id' : [group.id, group2.id]
+        }
     response = await client.post(
-        f'/auth/register-student-with-group/{group.id}', 
-        json=json
+        f'/auth/register-student-with-group', 
+        json=json,
+        params = params
         )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
-    assert data['group_id'] == group.id
+    assert set(params['group_id']) == ((set(data['group_ids']) & set(params['group_id'])))
+    json['full_name'] = json.pop('first_name') + " " + json.pop('last_name')
     dict_comparator(json, data)
 
 @pytest.mark.anyio
@@ -108,7 +114,7 @@ async def test_register_teacher_with_group(
     modern_group_factory
     ):
     #Временно пока не модифицирую build контроллера для фабрик
-    json = TeacherRegisterDataFactory.build(
+    json : dict = TeacherRegisterDataFactory.build(
         email='one@mail.com',
         phone_number='4234234234',
         role=Role.TEACHER
@@ -121,4 +127,5 @@ async def test_register_teacher_with_group(
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data['group_id'] == group.id
+    json['full_name'] = json.pop('first_name') + " " + json.pop('last_name')
     dict_comparator(json, data)

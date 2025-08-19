@@ -52,7 +52,7 @@ group_students_router = routing.APIRouter()
         response_model=List[GroupStudentDetailListResponse],
         status_code=status.HTTP_200_OK
 )
-async def group_students_detail_list(
+async def group_students_detail_full_list(
     user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -88,11 +88,11 @@ async def group_students_detail_list(
             students.append(
                 StudentDetailResponse(
                     id=student.id,
-                    first_name=student.first_name,
-                    last_name=student.last_name,
+                    full_name=student.full_name,
                     phone_number=student.phone_number,
                     email=student.email,
                     is_active=student.is_active,
+                    role=student.role,
                     payment_status=student_payment_status
                 )
             )
@@ -117,10 +117,10 @@ async def group_students_detail_list(
 
 @group_students_router.get(
         '/detail/{group_id}',
-        response_model=List[GroupStudentDetailResponse],
+        response_model=List[StudentDetailResponse],
         status_code=status.HTTP_200_OK
 )
-async def group_students_detail_list(
+async def group_students_detail_full(
     group_id: int,
     user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
@@ -158,19 +158,16 @@ async def group_students_detail_list(
         # percent = round(present / total * 100, 2) if total > 0 else 0.0
         student_payment_status = student.payment_details[0].status if student.payment_details else PaymentDetailStatus.UNPAID
         response.append(
-            GroupStudentDetailResponse(
-                student = StudentResponse(
+            StudentDetailResponse(
                     id=student.id,
-                    first_name=student.first_name,
-                    last_name=student.last_name,
+                    full_name=student.full_name,
                     is_active=student.is_active,
                     phone_number=student.phone_number,
-                    email=student.email
-                    ),
-                payment_status = student_payment_status
-                # attendance_ratio = percent
+                    email=student.email,
+                    role=student.role,
+                    payment_status = student_payment_status
+                )
             )
-        )
     return response
 
 
