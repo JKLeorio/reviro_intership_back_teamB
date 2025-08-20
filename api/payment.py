@@ -26,23 +26,31 @@ from models.group import Group
 from models.payment import Payment, PaymentDetail, Subscription, PaymentRequisite, PaymentCheck
 from models.user import User
 
-from schemas.payment import (PaymentCreate, PaymentDetailBase, PaymentDetailUpdate,
-                             PaymentDetailRead, PaymentPartialUpdate, PaymentRequisiteRead,
-                             PaymentResponse, PaymentUpdate, PaymentCheckRead,
-                             SubscriptionCreate, SubscriptionPartialUpdate,
-                             SubscriptionResponse, SubscriptionUpdate, PaymentShort, FinanceRow)
+from schemas.payment import (
+    PaymentCreate, PaymentDetailBase, PaymentDetailUpdate, PaymentDetailRead, PaymentPartialUpdate,
+    PaymentRequisiteRead, PaymentResponse, PaymentUpdate, PaymentCheckRead, SubscriptionCreate,
+    SubscriptionPartialUpdate, SubscriptionResponse, SubscriptionUpdate, PaymentShort, FinanceRow,
+    StripeCheckoutRequest, StripeCheckoutResponse, StripePaymentCreate
+)
 from schemas.pagination import PaginatedResponse, Pagination
 
 from utils.ext_and_size_validation_file import validate_file
 from utils.minio_client import minio_client
 from utils.checks_filters import CheckParams, build_checks_query, build_finance_query
 
+import stripe
+from fastapi import Request
+from decouple import config
+
+stripe.api_key = config('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET')
+
 subscription_router = routing.APIRouter()
 payment_router = routing.APIRouter()
 payment_details = routing.APIRouter()
 payment_requisites = routing.APIRouter()
 payment_checks_router = routing.APIRouter()
-
+stripe_router = routing.APIRouter()
 
 class SubscriptionFilter(Filter):
     status__in: Optional[List[SubscriptionStatus]] = None
@@ -52,7 +60,6 @@ class SubscriptionFilter(Filter):
 
     class Constants(Filter.Constants):
         model = Subscription
-
 
 class PaymentFilter(Filter):
     payment_method__in: Optional[List[PaymentMethod]] = None
@@ -103,7 +110,6 @@ async def subscription_list(
 
     return subscriptions.scalars().all()
 
-
 @subscription_router.get(
     "/{subscription_uuid}",
     response_model=SubscriptionResponse,
@@ -130,7 +136,6 @@ async def subscription_detail(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Subscription not found'}
             )
-
     return subscription
 
 
@@ -147,8 +152,8 @@ async def subscription_create(
     """
     await validate_related_fields(
         {
-            Course : subscription_create.course_id,
-            User : subscription_create.owner_id
+            Course: subscription_create.course_id,
+            User: subscription_create.owner_id
         },
         session=session
     )
@@ -191,12 +196,10 @@ async def subscription_update(
         )
 
     await validate_related_fields(
-        {Course, subscription_update.course_id}, session=session
+        {Course: subscription_update.course_id}, session=session
     )
-
     for key, value in subscription_update.model_dump().items():
         setattr(subscription, key, value)
-
     await session.commit()
     await session.refresh(subscription)
     return subscription
@@ -228,12 +231,10 @@ async def subscription_partial_update(
         )
 
     await validate_related_fields(
-        {Course, subscription_update.course_id}, session=session
+        {Course: subscription_update.course_id}, session=session
     )
-
     for key, value in subscription_update.model_dump(exclude_unset=True).items():
         setattr(subscription, key, value)
-
     await session.commit()
     await session.refresh(subscription)
     return subscription
@@ -260,38 +261,9 @@ async def subscription_delete(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"detail": "Subscription not found"},
         )
-
     await session.delete(subscription)
     await session.commit()
-
     return
-
-
-# @payment_router.get(
-#     '/',
-#     response_model=List[PaymentResponse],
-#     status_code=status.HTTP_200_OK
-# )
-# async def payment_list(
-#     offset: int = 0,
-#     limit: int = 10,
-#     payment_filter: PaymentFilter = FilterDepends(PaymentFilter),
-#     session: AsyncSession = Depends(get_async_session),
-#     user: User = Depends(current_admin_user)
-# ):
-#     '''
-#     Returns a list of payments
-#     you can use filters with query
-#     '''
-#     query = select(Payment).offset(offset=offset).limit(limit=limit).options(
-#         selectinload(Payment.owner),
-#         selectinload(Payment.subscription)
-#     )
-#     query = payment_filter.filter(query=query)
-#     payments = await session.execute(query)
-#
-#     return payments.scalars().all()
-
 
 @payment_router.get(
     '/{payment_id}',
@@ -318,10 +290,8 @@ async def payment_detail(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
-            )
-
+        )
     return payment
-
 
 @payment_router.post(
     '/',
@@ -350,11 +320,10 @@ async def payment_create(
     await session.commit()
     await session.refresh(payment, attribute_names=[
         'owner',
-        'subscription'
-    ])
+        'subscription'])
+
 
     return payment
-
 
 @payment_router.put(
     '/{payment_id}',
@@ -383,10 +352,8 @@ async def payment_update(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
             )
-
     for key, value in payment_update.model_dump().items():
         setattr(payment, key, value)
-
     await session.commit()
     await session.refresh(payment)
     return payment
@@ -419,7 +386,6 @@ async def payment_partial_update(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
             )
-
     for key, value in payment_update.model_dump(exclude_unset=True).items():
         setattr(payment, key, value)
 
@@ -452,7 +418,6 @@ async def payment_delete(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
             )
-
     await session.delete(payment)
     await session.commit()
     return
@@ -563,7 +528,6 @@ async def get_payment_by_id_or_pair(db: AsyncSession, payment_id: Optional[int],
                                                               PaymentDetail.student_id == student_id)
                                   .options(selectinload(PaymentDetail.group),
                                            selectinload(PaymentDetail.student)))
-
         return result.scalar_one_or_none()
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -577,7 +541,6 @@ async def get_payment_detail_by_id(payment_id: Optional[int] = Query(default=Non
                                    student_id: Optional[int] = Query(default=None),
                                    db: AsyncSession = Depends(get_async_session),
                                    user: User = Depends(current_admin_user)):
-
     payment = await get_payment_by_id_or_pair(db, payment_id, group_id, student_id)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -604,7 +567,6 @@ async def update_payment_by_payment_id(data: PaymentDetailUpdate,
                                        student_id: Optional[int] = Query(default=None),
                                        db: AsyncSession = Depends(get_async_session),
                                        user: User = Depends(current_admin_user)):
-
     payment = await get_payment_by_id_or_pair(db, payment_id, group_id, student_id)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -646,7 +608,6 @@ async def create_payment_requisite(bank_name: str = Form(None), account: str = F
 
     if not qr.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="QR file must be an image")
-
     try:
         file_path = await minio_client.upload_file(qr)
     except Exception as e:
@@ -742,7 +703,6 @@ async def create_payment_check(group_id: int, check: UploadFile = File(...),
     group = await db.get(Group, group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Group not found")
-
     is_member = await db.scalar(
         select(Group.id)
         .where(
@@ -795,7 +755,6 @@ async def download_check(check_id: int, db: AsyncSession = Depends(get_async_ses
 
     if not check.check:
         raise HTTPException(status_code=404, detail="No file attached")
-
     try:
         file_stream = minio_client.download_file(check.check)
         return StreamingResponse(
@@ -812,7 +771,6 @@ async def update_payment_check(check_id: int, group_id: Optional[int] = None,
                                     file: UploadFile | str | None = File(None),
                                     db: AsyncSession = Depends(get_async_session),
                                     user: User = Depends(current_admin_user)):
-
     check = await get_check_or_none(check_id, db)
     if not check:
         raise HTTPException(status_code=404, detail="Check not found")
@@ -900,3 +858,122 @@ async def destroy_check_by_id(check_id: int, db: AsyncSession = Depends(get_asyn
     await db.delete(check)
     await db.commit()
     return {"detail": "Check has been deleted"}
+
+
+@stripe_router.post("/create-checkout-session/", response_model=StripeCheckoutResponse)
+async def create_stripe_checkout_session(
+    request: StripeCheckoutRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_user)
+):
+
+    group = await session.get(
+        Group,
+        request.group_id,
+        options=[selectinload(Group.course)]
+    )
+    if not group:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found"
+        )
+    try:
+        stripe_product = stripe.Product.create(
+            name=f"Group: {group.name}",
+            description=f"Payment for {group.name}"
+        )
+        stripe_price = stripe.Price.create(
+            product=stripe_product.id,
+            unit_amount=int(group.course.price * 100),
+            currency='kgs',
+        )
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price': stripe_price.id,
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=request.success_url or 'https://your-domain.com/success',
+            cancel_url=request.cancel_url or 'https://your-domain.com/cancel',
+            customer_email=request.customer_email,
+            metadata={
+                'group_id': str(request.group_id),
+                'user_id': str(user.id)
+            }
+        )
+        payment = Payment(
+            amount=group.course.price,
+            payment_method=PaymentMethod.stripe,
+            payment_status=PaymentStatus.PENDING,
+            currency=Currency.KGS,
+            group_id=request.group_id,
+            owner_id=user.id,
+            stripe_session_id=checkout_session.id,
+            customer_email=request.customer_email
+        )
+        session.add(payment)
+        await session.commit()
+        return StripeCheckoutResponse(
+            checkout_url=checkout_session.url,
+            session_id=checkout_session.id
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Stripe error: {str(e)}"
+        )
+
+
+@stripe_router.post("/webhook")
+async def stripe_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session)
+):
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature')
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid payload"
+        )
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid signature"
+        )
+    if event['type'] == 'checkout.session.completed':
+        stripe_session = event['data']['object']
+        result = await session.execute(
+            select(Payment).where(Payment.stripe_session_id == stripe_session['id'])
+        )
+        payment = result.scalar_one_or_none()
+        if payment:
+            payment.payment_status = PaymentStatus.PAID.value
+            payment.stripe_payment_intent_id = stripe_session.get('payment_intent')
+            pid = payment.id
+            await session.commit()
+            logging.info(f"Payment {pid} marked as completed via Stripe")
+    return {"status": "success"}
+
+
+@stripe_router.get("/payments/")
+async def get_stripe_payments(
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)
+):
+
+    result = await session.execute(
+        select(Payment)
+        .where(Payment.payment_method == PaymentMethod.stripe)
+        .options(
+            selectinload(Payment.group),
+            selectinload(Payment.owner)
+        )
+        .order_by(Payment.created_at.desc())
+    )
+    return result.scalars().all()

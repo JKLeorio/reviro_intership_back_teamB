@@ -34,7 +34,7 @@ class SubscriptionStatus(str, Enum):
 class PaymentStatus(str, Enum):
     PENDING = "pending"
     PAID = "paid"
-    FAILED = "failed" 
+    FAILED = "failed"
     REFUNDED = "refunded"
     CANCELED = "canceled"
 
@@ -45,11 +45,12 @@ class PaymentDetailStatus(str, Enum):
 
 
 class PaymentMethod(str, Enum):
-    CASH = "cash"
-    CARD = "card"
-    BANK_TRANSFER = "bank_transfer"
-    ONLINE = "online"
-    PROMO = "promo"
+    cash = "cash"
+    card = "card"
+    bank_transfer = "bank_transfer"
+    online = "online"
+    promo = "promo"
+    stripe = "stripe"
 
 
 class Currency(str, Enum):
@@ -78,7 +79,7 @@ class HttpUrlType(TypeDecorator):
 
     def process_literal_param(self, value, dialect) -> str:
         return str(value)
-    
+
 
 class AttendanceStatus(str, Enum):
     ATTENTED = 'attended'
