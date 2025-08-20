@@ -91,6 +91,7 @@ async def test_register_student_with_group(
         phone_number='1231324345',
         role=Role.STUDENT
         )
+    json['full_name'] = ' '.join((json['full_name'].split()[:2]))
     group = await modern_group_factory()
     group2 = await modern_group_factory()
     params = {
@@ -105,7 +106,6 @@ async def test_register_student_with_group(
     data = response.json()
     # assert set(params['group_id']) == ((set(data['group_ids']) & set(params['group_id'])))
     assert isinstance(data['groups'], list)
-    json['full_name'] = json.pop('first_name') + " " + json.pop('last_name')
     dict_comparator(json, data)
 
 @pytest.mark.anyio
@@ -120,6 +120,7 @@ async def test_register_teacher_with_group(
         phone_number='4234234234',
         role=Role.TEACHER
         )
+    json['full_name'] = ' '.join((json['full_name'].split()[:2]))
     group = await modern_group_factory()
     response = await client.post(
         f'/auth/register-teacher-with-group/{group.id}', 
@@ -128,5 +129,4 @@ async def test_register_teacher_with_group(
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data['group_id'] == group.id
-    json['full_name'] = json.pop('first_name') + " " + json.pop('last_name')
     dict_comparator(json, data)
