@@ -83,6 +83,7 @@ async def teacher_list(
         .where(
             User.role == Role.TEACHER,
         )
+        .distinct(User.id)
         .offset(offset=offset)
         .limit(limit=size)
     )
