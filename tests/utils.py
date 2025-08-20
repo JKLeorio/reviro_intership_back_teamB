@@ -23,4 +23,4 @@ async def get_objects_by_ids(session: AsyncSession, alchemy_model: Any, ids: Ite
     objects = result.scalars().all()
     return objects
     
-    
+
