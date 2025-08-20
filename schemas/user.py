@@ -3,8 +3,9 @@ from typing import List, Literal, Optional, TYPE_CHECKING
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from fastapi_users import schemas
 
-from db.types import Role
-from schemas.course import ProfileCourse
+from db.types import PaymentDetailStatus, Role
+from schemas.course import CourseShortResponse, ProfileCourse
+from schemas.pagination import Pagination
 
 if TYPE_CHECKING:
     from schemas.group import GroupBase
@@ -60,6 +61,21 @@ class StudentResponse(BaseModel):
     id: int
     first_name: str
     last_name: str
+    phone_number: str
+    email: str
+    is_active: bool
+
+
+class UserFullnameResponse(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    phone_number: Optional[str] = None
+    role: Role
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 class TeacherResponse(UserResponse):
@@ -107,5 +123,17 @@ class StudentProfile(UserBase):
 class StudentRegister(UserRegister):
     role: Literal[Role.STUDENT] = Role.STUDENT
 
-class StudentWithGroupResponse(UserResponse):
+class TeacherRegister(UserRegister):
+    role: Literal[Role.TEACHER] = Role.TEACHER
+    description: Optional[str] = None
+
+
+class TeacherWithGroupResponse(UserFullnameResponse):
     group_id: int
+
+class TeacherWithCourseResponse(UserFullnameResponse):
+    courses: list[CourseShortResponse]
+
+class TeachersWithCourseAndPagination(BaseModel):
+    teachers : list[TeacherWithCourseResponse]
+    pagination: Pagination
