@@ -281,6 +281,28 @@ async def shedule_by_student(
     shedule = format_shedule(result)
     return shedule
 
+@shedule_router.get(
+        '/teacher/{user_id}',
+        response_model=SheduleResponse,
+        status_code=status.HTTP_200_OK
+        )
+async def shedule_by_teacher(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+):
+    '''
+    Returns teacher shedule by user id for current week
+    '''
+    request_user = await session.get(User, user_id)
+    if request_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='user not found'
+            )
+    result = await get_teacher_shedule(user_id, session)
+    shedule = format_shedule(result)
+    return shedule
 
 @shedule_router.get(
     '/group/{group_id}',

@@ -50,6 +50,9 @@ class CourseRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class CourseShortResponse(BaseModel):
+    id: int
+    name: str
 
 class CourseBase(BaseModel):
 

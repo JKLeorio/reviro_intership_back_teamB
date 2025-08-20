@@ -1,7 +1,10 @@
 import pytest
 
 from fastapi import status
-
+from sqlalchemy.orm import selectinload
+from db.types import Role
+from models.group import Group
+from models.user import User
 from tests.utils import dict_comparator
 
 USER_DATA = {
@@ -73,3 +76,43 @@ async def test_user_delete(client, user_factory):
     user_id = await user_factory(USER_DATA)
     response = await client.delete(f'/user/{user_id}')
     assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+@pytest.mark.anyio
+async def test_student_list(
+    client,
+    modern_group_factory,
+    modern_user_factory,
+    session
+):
+    student_id = (await modern_user_factory(role=Role.STUDENT)).id
+    group_id = (await modern_group_factory()).id
+    group = await session.get(
+        Group,
+        group_id
+    )
+    student = await session.get(
+        User,
+        student_id,
+    )
+    await session.refresh(group, attribute_names=['students'])
+    group.students.append = student
+    await session.commit()
+    response = await client.get("/user/students")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert isinstance(data['students'], list)
+    assert isinstance(data['pagination'], dict)
+
+@pytest.mark.anyio
+async def test_teacher_list(
+    client,
+    modern_group_factory,
+    modern_user_factory
+):
+    group = await modern_group_factory()
+    response = await client.get("/user/teachers")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert isinstance(data['teachers'], list)
+    assert isinstance(data['pagination'], dict)

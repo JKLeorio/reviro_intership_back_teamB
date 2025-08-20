@@ -27,6 +27,7 @@ from schemas.group import (
     GroupCreate,
     GroupProfileResponse, 
     GroupResponse,
+    GroupStudentDetailListResponse,
     GroupStudentDetailResponse,
     GroupStundentPartialUpdate,
     GroupUpdate, 
@@ -34,6 +35,7 @@ from schemas.group import (
     GroupStudentResponse,
     GroupStudentUpdate,
     ProfileGroup,
+    StudentDetailResponse
     )
 from schemas.pagination import Pagination
 from schemas.user import StudentResponse
@@ -46,56 +48,128 @@ group_students_router = routing.APIRouter()
 
 
 
-# @group_students_router.get(
-#         '/detail/{group_id}',
-#         response_model=List[GroupStudentDetailResponse],
-#         status_code=status.HTTP_200_OK
-# )
-# async def group_students_detail_list(
-#     group_id: int,
-#     user: User = Depends(current_teacher_user),
-#     session: AsyncSession = Depends(get_async_session)
-# ):
-#     '''
-#     Returns a list of students by group with student attendance, payment status
+@group_students_router.get(
+        '/detail-list',
+        response_model=List[GroupStudentDetailListResponse],
+        status_code=status.HTTP_200_OK
+)
+async def group_students_detail_full_list(
+    user: User = Depends(current_teacher_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    '''
+    Returns a list of groups with students and their attendance, payment status
 
-#     ROLES -> teacher, admin
+    ROLES -> teacher, admin
 
-#     '''
-#     group = await session.get(Group, group_id)
-#     stmt = (
-#         select(User)
-#         .join(User.groups_joined)
-#         .where(Group.id == group_id)
-#         .options(
-#             selectinload(User.payments),
-#             selectinload(User.attendance),
-#             with_loader_criteria(PaymentDetail, lambda p: (
-#                         (p.group_id == group_id)
-#                     )
-#                 )
-#             )
-#         )
-#     result = await session.execute(stmt)
-#     students = result.scalars().all()
-#     response = []
-#     for student in students:
-#         attendances = [a for a in user.attendance if a.group_id == group_id]
-#         total = len(attendances)
-#         present = sum(1 for a in attendances if a.status == AttendanceStatus.ATTENTED)
-#         percent = round(present / total * 100, 2) if total > 0 else 0.0
-#         response.append(
-#             GroupStudentDetailResponse(
-#                 student = StudentResponse(
-#                     id=student.id,
-#                     first_name=student.first_name,
-#                     last_name=student.last_name
-#                     )
-#                 ),
-#                 payment_status = student.payments[0].status,
-#                 attendance_ratio = percent
-#             )
-#     return response
+    '''
+
+    stmt = (
+        select(Group)
+        .options(
+            selectinload(Group.teacher),
+            selectinload(Group.students).options(
+                selectinload(User.payment_details)
+            ),
+            with_loader_criteria(
+                PaymentDetail,
+                lambda cls: PaymentDetail.group_id == Group.id,
+                include_aliases=True
+            )
+        )
+    )
+
+    result = await session.execute(stmt)
+    groups = result.scalars().all()
+    students = list()
+    response = list()
+    for group in groups:
+        for student in group.students:
+            student_payment_status = student.payment_details[0].status if student.payment_details else PaymentDetailStatus.UNPAID
+            students.append(
+                StudentDetailResponse(
+                    id=student.id,
+                    full_name=student.full_name,
+                    phone_number=student.phone_number,
+                    email=student.email,
+                    is_active=student.is_active,
+                    role=student.role,
+                    payment_status=student_payment_status
+                )
+            )
+        response.append(
+            GroupStudentDetailListResponse(
+                id=group.id,
+                name=group.name,
+                created_at=group.created_at,
+                start_date=group.start_date,
+                end_date=group.end_date,
+                approximate_lesson_start=group.approximate_lesson_start,
+                is_active=group.is_active,
+                is_archived=group.is_archived,
+                course_id=group.course_id,
+                teacher=group.teacher,
+                teacher_id=group.teacher_id,
+                students=students
+            )
+        )
+    return response
+
+
+@group_students_router.get(
+        '/detail/{group_id}',
+        response_model=List[StudentDetailResponse],
+        status_code=status.HTTP_200_OK
+)
+async def group_students_detail_full(
+    group_id: int,
+    user: User = Depends(current_teacher_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    '''
+    Returns a list of students by group with student attendance, payment status
+
+    ROLES -> teacher, admin
+
+    '''
+    group = await session.get(Group, group_id)
+    stmt = (
+        select(User)
+        .join(User.groups_joined)
+        .where(Group.id == group_id)
+        .options(
+            selectinload(User.payment_details),
+            selectinload(User.attendance),
+            with_loader_criteria(
+                PaymentDetail, 
+                lambda p: (
+                (p.group_id == group_id)
+                    ),
+                include_aliases=True
+                )
+            )
+        )
+    result = await session.execute(stmt)
+    students = result.scalars().all()
+    response = []
+    for student in students:
+        # attendances = [a for a in user.attendance if a.group_id == group_id]
+        # total = len(attendances)
+        # present = sum(1 for a in attendances if a.status == AttendanceStatus.ATTENTED)
+        # percent = round(present / total * 100, 2) if total > 0 else 0.0
+        student_payment_status = student.payment_details[0].status if student.payment_details else PaymentDetailStatus.UNPAID
+        response.append(
+            StudentDetailResponse(
+                    id=student.id,
+                    full_name=student.full_name,
+                    is_active=student.is_active,
+                    phone_number=student.phone_number,
+                    email=student.email,
+                    role=student.role,
+                    payment_status = student_payment_status
+                )
+            )
+    return response
 
 
 async def group_relates(group_data, session):

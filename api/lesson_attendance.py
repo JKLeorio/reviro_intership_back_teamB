@@ -150,7 +150,15 @@ async def attendance_by_student(
         .offset(offset=offset)
         .limit(limit=size)
     )
-    total_stmt = select(func.count()).select_from(Attendance)
+    total_stmt = (
+        select(func.count()).select_from(Attendance)
+        .join(Attendance.lesson)
+        .join(Lesson.group)
+        .where(
+        Lesson.passed.is_(True),
+        Attendance.student_id == user_id
+        )
+    )
     total_items = (await session.execute(total_stmt)).scalar_one()
 
     total_pages = ceil(total_items / size) if total_items else 1

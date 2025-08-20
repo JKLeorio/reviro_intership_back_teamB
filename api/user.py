@@ -1,7 +1,8 @@
-from typing import List, Optional, Union
-from fastapi import routing, HTTPException, Depends, status
+from math import ceil
+from typing import Annotated, List, Optional, Union
+from fastapi import Query, routing, HTTPException, Depends, status
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,10 +29,14 @@ from models.lesson import Lesson
 from models.payment import Payment
 from models.user import User, student_group_association_table
 from models.group import Group
-from schemas.course import ProfileCourse
+from schemas.group import GroupShort, StudentWithGroupResponse, StudentWithGroupAndPagination
+from schemas.course import CourseShortResponse, ProfileCourse
+from schemas.pagination import Pagination
 from schemas.user import (
     StudentProfile,
     TeacherProfile,
+    TeacherWithCourseResponse,
+    TeachersWithCourseAndPagination,
     UserBase,
     UserPartialUpdate,
     UserResponse,
@@ -47,6 +52,159 @@ class UserFilter(Filter):
 
     class Constants(Filter.Constants):
         model = User
+
+
+@user_router.get(
+    '/teachers',
+    response_model=TeachersWithCourseAndPagination,
+    status_code=status.HTTP_200_OK
+)
+async def teacher_list(
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=100)] = 20,
+    course_id: Annotated[int | None, Query()] = None,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)
+):
+    """
+    Return teachers with courses
+    ROLES -> admin
+
+    has pagination and filtration by course
+    """
+    offset = (page-1)*size
+    stmt = (
+        select(User)
+        .options(
+            selectinload(User.groups_taught)
+            .options(selectinload(Group.course))
+        )
+        .join(User.groups_taught, isouter=True)
+        .where(
+            User.role == Role.TEACHER,
+        )
+        .offset(offset=offset)
+        .limit(limit=size)
+    )
+    if course_id is not None:
+        stmt = stmt.where(Group.course_id == course_id)
+        
+    stmt_total = (
+        select(func.count())
+        .select_from(User)
+        .where(
+            User.role == Role.TEACHER
+        )
+    )
+    result = await session.execute(stmt)
+    teachers = result.scalars().all()
+    total_items = (await session.execute(stmt_total)).scalar_one()
+    total_pages = ceil(total_items / size) if total_items else 1
+
+    if page > total_pages:
+        page = total_pages
+
+    response_teachers = [
+        TeacherWithCourseResponse(
+        id=teacher.id,
+        full_name=teacher.full_name,
+        email=teacher.email,
+        phone_number=teacher.phone_number,
+        role=teacher.role,
+        is_active=teacher.is_active,
+        courses=[
+            CourseShortResponse.model_validate(
+                group.course,
+                from_attributes=True
+            ) for group in teacher.groups_taught
+        ]
+        ) for teacher in teachers
+    ]
+    response = TeachersWithCourseAndPagination(
+        teachers=response_teachers,
+        pagination=Pagination(
+            current_page_size=size,
+            current_page=page,
+            total_pages=total_pages
+        )
+    )
+    return response
+
+@user_router.get(
+    '/students',
+    response_model=StudentWithGroupAndPagination,
+    status_code=status.HTTP_200_OK
+)
+async def student_list(
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=100)] = 20,
+    group_id: Annotated[int | None, Query()] = None,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)
+):
+    """
+    Return students with courses
+    ROLES -> admin
+
+    has pagination and filtration by course
+    """
+    offset = (page-1)*size
+    stmt = (
+        select(User)
+        .options(
+            selectinload(User.groups_joined)
+        )
+        .join(User.groups_joined)
+        .where(
+            User.role == Role.STUDENT,
+        )
+        .distinct(User.id)
+        .offset(offset=offset)
+        .limit(limit=size)
+    )
+    if group_id is not None:
+        stmt = stmt.where(Group.id == group_id)
+    
+    stmt_total = (
+        select(func.count())
+        .select_from(User)
+        .where(
+            User.role == Role.STUDENT
+        )
+    )
+    result = await session.execute(stmt)
+    students = result.scalars().all()
+    total_items = (await session.execute(stmt_total)).scalar_one()
+    total_pages = ceil(total_items / size) if total_items else 1
+
+    if page > total_pages:
+        page = total_pages
+
+    response_students = [
+        StudentWithGroupResponse(
+        id=student.id,
+        full_name=student.full_name,
+        email=student.email,
+        phone_number=student.phone_number,
+        role=student.role,
+        is_active=student.is_active,
+        groups=[
+            GroupShort.model_validate(
+                group,
+                from_attributes=True
+            ) for group in student.groups_joined
+        ]
+        ) for student in students
+    ]
+    response = StudentWithGroupAndPagination(
+        students=response_students,
+        pagination=Pagination(
+            current_page_size=size,
+            current_page=page,
+            total_pages=total_pages
+        )
+    )
+    return response
 
 
 
