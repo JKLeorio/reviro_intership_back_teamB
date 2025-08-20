@@ -91,6 +91,7 @@ async def test_register_student_with_group(
         phone_number='1231324345',
         role=Role.STUDENT
         )
+    json['full_name'] = ' '.join((json['full_name'].split()[:2]))
     group = await modern_group_factory()
     group2 = await modern_group_factory()
     params = {
@@ -119,6 +120,7 @@ async def test_register_teacher_with_group(
         phone_number='4234234234',
         role=Role.TEACHER
         )
+    json['full_name'] = ' '.join((json['full_name'].split()[:2]))
     group = await modern_group_factory()
     response = await client.post(
         f'/auth/register-teacher-with-group/{group.id}', 
