@@ -105,7 +105,6 @@ async def test_register_student_with_group(
     data = response.json()
     # assert set(params['group_id']) == ((set(data['group_ids']) & set(params['group_id'])))
     assert isinstance(data['groups'], list)
-    json['full_name'] = json.pop('first_name') + " " + json.pop('last_name')
     dict_comparator(json, data)
 
 @pytest.mark.anyio
@@ -128,5 +127,4 @@ async def test_register_teacher_with_group(
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data['group_id'] == group.id
-    json['full_name'] = json.pop('first_name') + " " + json.pop('last_name')
     dict_comparator(json, data)

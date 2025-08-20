@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import List, Literal, Optional, TYPE_CHECKING
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+import re
+from typing import Dict, List, Literal, Optional, TYPE_CHECKING
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, PrivateAttr, field_validator, model_validator
 from fastapi_users import schemas
 
 from db.types import PaymentDetailStatus, Role
@@ -106,6 +107,24 @@ class SuperAdminCreate(UserCreate):
     role: Role = Field(default=Role.ADMIN)
 
 
+def validate_full_name(full_name: str) -> Dict[str, str]:
+    parts = full_name.strip().split()
+        
+    if len(parts) < 2:
+        raise ValueError("fullname must contain first and last names")
+
+    pattern = re.compile(r"^[A-Za-zА-Яа-яЁё-]+$")
+    for part in parts:
+        if not pattern.match(part):
+            raise ValueError(f"this name part doesn't correct: {part}")
+
+    last_name, first_name = parts[1], parts[0]
+    # middle_name = parts[2] if len(parts) > 2 else None
+    return {
+        'first_name' : first_name,
+        'last_name' : last_name
+    }
+
 class SuperAdminUpdate(schemas.BaseUserUpdate):
     pass
 
@@ -120,10 +139,36 @@ class TeacherProfile(UserBase):
 class StudentProfile(UserBase):
     courses: list[ProfileCourse] = []
 
-class StudentRegister(UserRegister):
+class UserFullNameRegister(BaseModel):
+    full_name: str
+    
+    _first_name: Optional[str] = PrivateAttr(default=None)
+    _last_name: Optional[str] = PrivateAttr(default=None)
+
+    email: EmailStr = Field(..., max_length=254)
+    role: Role = Field(
+        Role.STUDENT,
+        description="User role, default is 'STUDENT'")
+    phone_number: Optional[str] = None
+
+    @model_validator(mode='after')
+    def validate_full_name_field(self):
+        names = validate_full_name(self.full_name)
+        self._first_name = names['first_name']
+        self._last_name = names['last_name']
+        return self
+    
+    def model_dump(self, *args, **kwargs):
+        data = super().model_dump(*args, **kwargs)
+        data["first_name"] = self._first_name
+        data["last_name"] = self._last_name
+        return data
+
+
+class StudentRegister(UserFullNameRegister):
     role: Literal[Role.STUDENT] = Role.STUDENT
 
-class TeacherRegister(UserRegister):
+class TeacherRegister(UserFullNameRegister):
     role: Literal[Role.TEACHER] = Role.TEACHER
     description: Optional[str] = None
 
