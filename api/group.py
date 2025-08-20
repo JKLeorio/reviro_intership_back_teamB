@@ -35,9 +35,10 @@ from schemas.group import (
     GroupStudentResponse,
     GroupStudentUpdate,
     ProfileGroup,
+    StudentDetailResponse
     )
 from schemas.pagination import Pagination
-from schemas.user import StudentDetailResponse, StudentResponse
+from schemas.user import StudentResponse
 
 
 group_router = routing.APIRouter()

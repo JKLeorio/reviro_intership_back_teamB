@@ -4,7 +4,8 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from fastapi_users import schemas
 
 from db.types import PaymentDetailStatus, Role
-from schemas.course import ProfileCourse
+from schemas.course import CourseShortResponse, ProfileCourse
+from schemas.pagination import Pagination
 
 if TYPE_CHECKING:
     from schemas.group import GroupBase
@@ -76,11 +77,6 @@ class UserFullnameResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class StudentDetailResponse(UserFullnameResponse):
-    payment_status: PaymentDetailStatus
-
-    model_config = ConfigDict(from_attributes=True)
-
 
 class TeacherResponse(UserResponse):
     role: str
@@ -132,8 +128,12 @@ class TeacherRegister(UserRegister):
     description: Optional[str] = None
 
 
-class StudentWithGroupResponse(UserFullnameResponse):
-    group_ids: list[int]
-
 class TeacherWithGroupResponse(UserFullnameResponse):
     group_id: int
+
+class TeacherWithCourseResponse(UserFullnameResponse):
+    courses: list[CourseShortResponse]
+
+class TeachersWithCourseAndPagination(BaseModel):
+    teachers : list[TeacherWithCourseResponse]
+    pagination: Pagination

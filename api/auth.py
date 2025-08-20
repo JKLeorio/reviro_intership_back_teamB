@@ -9,7 +9,8 @@ from api.permissions import require_roles
 from models.group import Group
 from models.user import User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, StudentWithGroupResponse, TeacherRegister, TeacherWithGroupResponse, UserCreate, UserRegister, UserResponse, AdminRegister
+from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherRegister, TeacherWithGroupResponse, UserResponse, AdminRegister
+from schemas.group import GroupShort, StudentWithGroupResponse
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from typing import Annotated, Any, List, Optional
 from decouple import config
@@ -240,8 +241,12 @@ async def register_student_with_group(
 
     await session.commit()
     await session.refresh(new_user, attribute_names=['groups_joined'])
-
-    response_group_ids = [group.id for group in new_user.groups_joined]
+    response_groups = [
+        GroupShort.model_validate(
+            group, 
+            from_attributes=True
+            ) for group in new_user.groups_joined
+            ]
 
     return StudentWithGroupResponse(
         id=new_user.id,
@@ -250,7 +255,7 @@ async def register_student_with_group(
         phone_number=new_user.phone_number,
         role=new_user.role,
         is_active=new_user.is_active,
-        group_ids=response_group_ids
+        groups=response_groups
     )
 
 
@@ -266,14 +271,34 @@ async def register_teacher_with_group(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
-    result = await register_user_with_group(
-        group_id=group_id,
-        session=session,
-        user_manager=user_manager,
-        user_data=user_data
-    )
-    new_user = result['user']
-    group = result['group']
+    group = await session.get(
+        Group, 
+        group_id, 
+        options=[
+            selectinload(Group.students)
+            ]
+        )
+    if group is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='group not found'
+            )
+    if await session.scalar(select(User).where(User.email == user_data.email)):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    password = generate_password()
+    user_data_dump = user_data.model_dump()
+    user_data_dump['password'] = password
+    new_user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
+
+    new_user = await session.merge(new_user)
+    await session.refresh(new_user)
+    await session.refresh(group, attribute_names=['students', 'teacher'])
+
+    group.teacher = new_user
+
+    await session.commit()
+    await session.refresh(new_user)
+
     return TeacherWithGroupResponse(
         id=new_user.id,
         full_name=new_user.first_name + " " + new_user.last_name,
