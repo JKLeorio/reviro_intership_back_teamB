@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from models.payment import PaymentDetail, PaymentCheck, Payment
 
 
+
 class Group(Base):
 
     __tablename__ = 'groups'
@@ -48,3 +49,4 @@ class Group(Base):
     payment_checks: Mapped[List["PaymentCheck"]] = relationship(back_populates='group', passive_deletes=True)
 
     payments: Mapped[List["Payment"]] = relationship(back_populates="group")
+
