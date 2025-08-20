@@ -22,6 +22,7 @@ from api.group import group_students_router, group_router
 from api.user import user_router
 from api.payment import payment_router, subscription_router, payment_details, update_and_check_payments, \
     payment_requisites, payment_checks_router, stripe_router
+
 from api.shedule import shedule_router
 from api.lesson_attendance import attendance_router
 from admin.auth import admin_authentication_backend
@@ -31,10 +32,12 @@ from api.export import export_router
 scheduler = AsyncIOScheduler()
 logging.basicConfig(level=logging.INFO)
 
+
 from decouple import config
 import logging
 logging.basicConfig(level=logging.INFO)
 logging.info(f"STRIPE_SECRET_KEY: {config('STRIPE_SECRET_KEY', default='Not found')}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -98,6 +101,7 @@ app.include_router(payment_checks_router, prefix='/checks', tags=["Payment-check
 app.include_router(export_router)
 app.include_router(finance_router, prefix='/finance', tags=['Finance'])
 app.include_router(stripe_router, prefix='/stripe', tags=['Stripe-payments'])
+
 
 
 if __name__ == "__main__":

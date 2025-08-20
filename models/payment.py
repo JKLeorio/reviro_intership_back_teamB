@@ -30,13 +30,13 @@ class Subscription(Base):
     course: Mapped["Course"] = relationship(back_populates="subscriptions")
     owner: Mapped["User"] = relationship(back_populates="subscriptions")
 
-    payments: Mapped[list["Payment"]] = relationship(back_populates="subscription")
-
 
 class Payment(Base):
     __tablename__ = "payments"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Временно cascade
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
     payment_method: Mapped["PaymentMethod"] = mapped_column(
@@ -50,8 +50,8 @@ class Payment(Base):
     stripe_payment_intent_id: Mapped[str] = mapped_column(String, nullable=True)
     customer_email: Mapped[str] = mapped_column(String, nullable=True)
 
-    subscription_id: Mapped[int] = mapped_column(ForeignKey("subscriptions.id", ondelete="CASCADE"))
-    subscription: Mapped["Subscription"] = relationship(back_populates="payments")
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"))
+    group: Mapped["Group"] = relationship(back_populates="payments")
 
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     owner: Mapped["User"] = relationship('User', back_populates='payments')

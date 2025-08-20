@@ -57,7 +57,8 @@ class PaymentBase(BaseModel):
 
 
 class PaymentResponse(PaymentBase):
-    subscription: SubscriptionBase
+    group: GroupBase
+
     owner: UserBase
     stripe_session_id: Optional[str] = None
     stripe_payment_intent_id: Optional[str] = None
@@ -66,7 +67,8 @@ class PaymentResponse(PaymentBase):
 
 class PaymentCreate(BaseModel):
     amount: float
-    payment_method: PaymentMethod = PaymentMethod.CASH
+    payment_method: PaymentMethod = PaymentMethod.cash
+
     payment_status: PaymentStatus = PaymentStatus.PENDING
     currency: Currency = Currency.KGS
     subscription_id: uuid.UUID
@@ -74,7 +76,8 @@ class PaymentCreate(BaseModel):
 
 
 class PaymentUpdate(BaseModel):
-    payment_method: PaymentMethod = PaymentMethod.CASH
+    payment_method: PaymentMethod = PaymentMethod.cash
+
     payment_status: PaymentStatus = PaymentStatus.PENDING
 
 
@@ -207,20 +210,25 @@ class FinanceRow(BaseModel):
 
 
 class StripeCheckoutRequest(BaseModel):
-    subscription_id: uuid.UUID
+
+    group_id: int
+
     customer_email: str
     success_url: Optional[str] = None
     cancel_url: Optional[str] = None
 
+
 class StripeCheckoutResponse(BaseModel):
     checkout_url: str
     session_id: str
+      
 
 class StripePaymentCreate(BaseModel):
     amount: float
     customer_email: str
-    subscription_id: uuid.UUID
+    group_id: int
     stripe_session_id: str
-    payment_method: PaymentMethod = PaymentMethod.STRIPE
-    payment_status: PaymentStatus = PaymentStatus.PENDING
-    currency: Currency = Currency.USD
+    payment_method: PaymentMethod
+    payment_status: PaymentStatus
+    currency: Currency
+
