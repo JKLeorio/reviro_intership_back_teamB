@@ -755,6 +755,7 @@ async def create_payment_check(group_id: int, check: UploadFile = File(...),
     if not is_member and user.role != Role.ADMIN:
         raise HTTPException(status_code=403, detail="Not allowed for this group")
     await validate_file(check)
+    check.file.seek(0)
     try:
         file_path = await minio_client.upload_file(check)
     except Exception as e:
@@ -811,7 +812,7 @@ async def download_check(check_id: int, db: AsyncSession = Depends(get_async_ses
 async def update_payment_check(check_id: int, group_id: Optional[int] = None,
                                     file: UploadFile | str | None = File(None),
                                     db: AsyncSession = Depends(get_async_session),
-                                    user: User = Depends(current_admin_user)):
+                                    user: User = Depends(current_student_user)):
 
     check = await get_check_or_none(check_id, db)
     if not check:
@@ -826,6 +827,7 @@ async def update_payment_check(check_id: int, group_id: Optional[int] = None,
 
     if file:
         await validate_file(file)
+        file.file.seek(0)
         if check.check:
             try:
                 minio_client.client.remove_object(minio_client.bucket_name, check.check)
@@ -887,10 +889,12 @@ async def get_checks_by_group_id(group_id: Optional[int] = None,
 
 @payment_checks_router.delete("/{check_id}", status_code=status.HTTP_200_OK)
 async def destroy_check_by_id(check_id: int, db: AsyncSession = Depends(get_async_session),
-                              user: User = Depends(current_admin_user)):
+                              user: User = Depends(current_student_user)):
     check = await db.get(PaymentCheck, check_id)
     if check is None:
         raise HTTPException(status_code=404, detail='Check not found')
+    if check.student_id != user.id and user.role != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
     if check.check:
         try:
             minio_client.client.remove_object(minio_client.bucket_name, check.check)

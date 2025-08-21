@@ -599,7 +599,7 @@ async def download_submission(submission_id: int, db: AsyncSession = Depends(get
             headers={"Content-Disposition": f"attachment; filename={os.path.basename(submission.file_path)}"},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not generate download URL: {e}")
+        raise HTTPException(status_code=404, detail=f"Could not generate download URL: {e}")
 
 
 @homework_submission_router.get('/{submission_id}',
