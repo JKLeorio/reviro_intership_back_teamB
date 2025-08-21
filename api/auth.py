@@ -1,6 +1,7 @@
 import contextlib
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi_users import FastAPIUsers, fastapi_users
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,9 +9,10 @@ from api.permissions import require_roles
 from models.group import Group
 from models.user import User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, StudentWithGroupResponse, UserCreate, UserRegister, UserResponse, AdminRegister
+from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherRegister, TeacherWithGroupResponse, UserResponse, AdminRegister
+from schemas.group import GroupShort, StudentWithGroupResponse
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
-from typing import Optional
+from typing import Annotated, Any, List, Optional
 from decouple import config
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from utils.password_utils import generate_password
@@ -119,9 +121,6 @@ async def register_admin(
     user_data_dump['password'] = password
     
     user = await user_manager.create(AdminCreate(**user_data_dump))
-
-    #Password sending logic here, for example sending into user email
-    #smtp_server.send(message=f'here your password {password} for {url}')
     
     response = UserResponse.model_validate(user)
     response.password = password
@@ -149,22 +148,125 @@ async def register_user(
     user_data_dump['password'] = password
     user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
 
-    #Password sending logic here, for example sending into user email
-    #smtp_server.send(message=f'here your password {password} for {url}')
-
     response = UserResponse.model_validate(user)
     response.password = password
     return response
 
 
+
+
+async def register_user_with_group(
+        group_id: int, 
+        session: AsyncSession,
+        user_manager: UserManager,
+        user_data: BaseModel,
+        ):
+    group = await session.get(
+        Group, 
+        group_id, 
+        options=[
+            selectinload(Group.students)
+            ]
+        )
+    if group is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='group not found'
+            )
+    if await session.scalar(select(User).where(User.email == user_data.email)):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    password = generate_password()
+    user_data_dump = user_data.model_dump()
+    user_data_dump['password'] = password
+    new_user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
+
+    new_user = await session.merge(new_user)
+    await session.refresh(new_user)
+    await session.refresh(group, attribute_names=['students'])
+
+    # if new_user not in (await group.awaitable_attrs.students):
+    if new_user not in group.students:
+        group.students.append(new_user)
+    await session.commit()
+    await session.refresh(new_user)
+    return {
+        'user' : new_user,
+        'group' : group
+    }
+
+
 @authRouter.post(
-    "/register-student-with-group/{group_id}",
+    "/register-student-with-group",
     response_model=StudentWithGroupResponse,
     status_code=status.HTTP_201_CREATED
     )
 async def register_student_with_group(
-    group_id: int,
+    group_id: Annotated[List[int], Query()],
     user_data: StudentRegister,
+    user_manager: UserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)
+):
+    group_ids = set(group_id)
+    stmt = (
+        select(Group)
+        .where(
+            Group.is_archived.is_(False),
+            Group.id.in_(group_ids)
+        )
+    )
+    result = await session.execute(stmt)
+    groups = result.scalars().all()
+    if len(group_ids) != len(groups):
+        raise HTTPException(status_code=404, detail='group not found')
+    
+    if await session.scalar(select(User).where(User.email == user_data.email)):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    password = generate_password()
+    user_data_dump = user_data.model_dump()
+    user_data_dump['password'] = password
+    new_user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
+    new_user = await session.merge(new_user)
+
+    groups = (await session.execute(
+        stmt.options(
+            selectinload(
+                Group.students)
+                )
+            )
+        ).scalars().all()
+    for group in groups:
+        group.students.append(new_user)
+
+    await session.commit()
+    await session.refresh(new_user, attribute_names=['groups_joined'])
+    response_groups = [
+        GroupShort.model_validate(
+            group, 
+            from_attributes=True
+            ) for group in new_user.groups_joined
+            ]
+
+    return StudentWithGroupResponse(
+        id=new_user.id,
+        full_name=new_user.full_name,
+        email=new_user.email,
+        phone_number=new_user.phone_number,
+        role=new_user.role,
+        is_active=new_user.is_active,
+        groups=response_groups
+    )
+
+
+@authRouter.post(
+    "/register-teacher-with-group/{group_id}",
+    response_model=TeacherWithGroupResponse,
+    status_code=status.HTTP_201_CREATED
+    )
+async def register_teacher_with_group(
+    group_id: int,
+    user_data: TeacherRegister,
     user_manager: UserManager = Depends(get_user_manager),
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
@@ -188,20 +290,21 @@ async def register_student_with_group(
     user_data_dump['password'] = password
     new_user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
 
-    #Password sending logic here, for example sending into user email
-    #smtp_server.send(message=f'here your password {password} for {url}')
-
     new_user = await session.merge(new_user)
     await session.refresh(new_user)
-    await session.refresh(group, attribute_names=['students'])
+    await session.refresh(group, attribute_names=['students', 'teacher'])
 
-    # if new_user not in (await group.awaitable_attrs.students):
-    if new_user not in group.students:
-        group.students.append(new_user)
+    group.teacher = new_user
+
     await session.commit()
     await session.refresh(new_user)
 
-    return StudentWithGroupResponse(
-        **(UserResponse.model_validate(new_user).model_dump()),
+    return TeacherWithGroupResponse(
+        id=new_user.id,
+        full_name=new_user.first_name + " " + new_user.last_name,
+        is_active=new_user.is_active,
+        phone_number=new_user.phone_number,
+        email=new_user.email,
+        role=new_user.role,
         group_id=group_id
     )

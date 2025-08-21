@@ -1,7 +1,8 @@
 import pytest
 from fastapi import status
 
-from tests.fixtures.factories.schemas.user_schema_data_factory import StudentRegisterDataFactory
+from db.types import Role
+from tests.fixtures.factories.schemas.user_schema_data_factory import StudentRegisterDataFactory, TeacherRegisterDataFactory
 from tests.utils import dict_comparator
 
 
@@ -80,22 +81,53 @@ async def test_register_user_permission(client):
 
 @pytest.mark.anyio
 @pytest.mark.role('admin')
-async def test_register_user_with_group(
+async def test_register_student_with_group(
     client,
     modern_group_factory
     ):
     #Временно пока не модифицирую build контроллера для фабрик
     json = StudentRegisterDataFactory.build(
         email='zero@mail.com',
-        phone_number='1231324345'
+        phone_number='1231324345',
+        role=Role.STUDENT
         )
+    json['full_name'] = ' '.join((json['full_name'].split()[:2]))
+    group = await modern_group_factory()
+    group2 = await modern_group_factory()
+    params = {
+        'group_id' : [group.id, group2.id]
+        }
+    response = await client.post(
+        f'/auth/register-student-with-group', 
+        json=json,
+        params = params
+        )
+    assert response.status_code == status.HTTP_201_CREATED, response.text
+    data = response.json()
+    # assert set(params['group_id']) == ((set(data['group_ids']) & set(params['group_id'])))
+    assert isinstance(data['groups'], list)
+    dict_comparator(json, data)
+
+@pytest.mark.anyio
+@pytest.mark.role('admin')
+async def test_register_teacher_with_group(
+    client,
+    modern_group_factory
+    ):
+    #Временно пока не модифицирую build контроллера для фабрик
+    json : dict = TeacherRegisterDataFactory.build(
+        email='one@mail.com',
+        phone_number='4234234234',
+        role=Role.TEACHER
+        )
+    json['full_name'] = ' '.join((json['full_name'].split()[:2]))
     group = await modern_group_factory()
     response = await client.post(
-        f'/auth/register-student-with-group/{group.id}', 
+        f'/auth/register-teacher-with-group/{group.id}', 
         json=json
         )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
-    print(data, json)
     assert data['group_id'] == group.id
+
     dict_comparator(json, data)

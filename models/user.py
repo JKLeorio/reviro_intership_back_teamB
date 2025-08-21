@@ -54,3 +54,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
       
     def __str__(self):
         return f"({self.id}){self.email} <-> {self.first_name} {self.last_name}"
+    
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
