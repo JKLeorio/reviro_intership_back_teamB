@@ -102,7 +102,7 @@ async def test_register_student_with_group(
         json=json,
         params = params
         )
-    assert response.status_code == status.HTTP_201_CREATED
+    assert response.status_code == status.HTTP_201_CREATED, response.text
     data = response.json()
     # assert set(params['group_id']) == ((set(data['group_ids']) & set(params['group_id'])))
     assert isinstance(data['groups'], list)
@@ -129,4 +129,5 @@ async def test_register_teacher_with_group(
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data['group_id'] == group.id
+
     dict_comparator(json, data)
