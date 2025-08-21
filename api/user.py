@@ -365,7 +365,12 @@ async def student_partial_update(
     except UserNotExists:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail='teacher not found'
+            detail='student not found'
+            )
+    if user_to_update.role != Role.STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='student not found'
             )
     await validate_user_unique(
         email=student_data.email,
@@ -398,6 +403,11 @@ async def teacher_partial_update(
     try:
         user_to_update = await user_manager.get(teacher_id)
     except UserNotExists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='teacher not found'
+            )
+    if user_to_update.role != Role.TEACHER:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='teacher not found'
