@@ -1014,15 +1014,35 @@ async def stripe_webhook(
     if event['type'] == 'checkout.session.completed':
         stripe_session = event['data']['object']
         result = await session.execute(
-            select(Payment).where(Payment.stripe_session_id == stripe_session['id'])
+            select(Payment).where(and_(Payment.payment_status == PaymentStatus.PENDING,
+                Payment.stripe_session_id == stripe_session['id']))
         )
         payment = result.scalar_one_or_none()
         if payment:
             payment.payment_status = PaymentStatus.PAID.value
             payment.stripe_payment_intent_id = stripe_session.get('payment_intent')
             pid = payment.id
+
+            owner_id = payment.owner_id
+            group_id = payment.group_id
+
+            res = await session.execute(
+                select(PaymentDetail).where(and_(PaymentDetail.group_id == group_id,
+                                                 PaymentDetail.student_id == owner_id))
+            )
+
+            detail = res.scalar_one_or_none()
+            if detail:
+                detail.months_paid = detail.months_paid + 1
+                detail.deadline = detail.joined_at + relativedelta(months=detail.months_paid)
+                if detail.current_month_number is not None and detail.months_paid is not None:
+                    detail.status = (
+                        PaymentDetailStatus.UNPAID
+                        if detail.current_month_number > detail.months_paid
+                        else PaymentDetailStatus.PAID
+                    )
+
             await session.commit()
-            logging.info(f"Payment {pid} marked as completed via Stripe")
     return {"status": "success"}
 
 
