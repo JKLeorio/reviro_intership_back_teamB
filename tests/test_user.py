@@ -47,6 +47,8 @@ async def test_user_update(client, user_factory):
     USER_DATA['email'] = '3@mail.com'
     USER_DATA['phone_number'] = '1234'
     user_id = await user_factory(USER_DATA)
+    USER_DATA['email'] = "710@mail.com"
+    USER_DATA['phone_number'] = '7775'
     USER_DATA['first_name'] = 'biba'
     USER_DATA['last_name'] = 'boba'
     response = await client.put(f'/user/{user_id}', json=USER_DATA)
@@ -61,6 +63,7 @@ async def test_user_partial_update(client, user_factory):
     USER_DATA['email'] = '4@mail.com'
     USER_DATA['phone_number'] = '333'
     user_id = await user_factory(USER_DATA)
+    USER_DATA['email'] = "6@mail.com"
     USER_DATA['phone_number'] = '777'
     response = await client.put(f'/user/{user_id}', json=USER_DATA)
     assert response.status_code == status.HTTP_200_OK
@@ -116,3 +119,30 @@ async def test_teacher_list(
     data = response.json()
     assert isinstance(data['teachers'], list)
     assert isinstance(data['pagination'], dict)
+
+
+@pytest.mark.anyio
+async def test_teacher_update(
+    client,
+    modern_user_factory
+):
+    user = await modern_user_factory()
+    json = {
+        'email': 'up1email@mail.com',
+        'phone_number': '1111111111143243'
+    }
+    response = await client.patch(f"/user/student/{user.id}", json=json)
+    assert response.status_code == status.HTTP_200_OK
+
+@pytest.mark.anyio
+async def test_student_update(
+    client,
+    modern_user_factory
+):
+    user = await modern_user_factory()
+    json = {
+        'email': 'up22email@mail.com',
+        'phone_number': '11111111113243'
+    }
+    response = await client.patch(f"/user/teacher/{user.id}", json=json)
+    assert response.status_code == status.HTTP_200_OK
