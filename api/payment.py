@@ -896,7 +896,7 @@ async def create_stripe_checkout_session(
             mode='payment',
             success_url=request.success_url or 'https://your-domain.com/success',
             cancel_url=request.cancel_url or 'https://your-domain.com/cancel',
-            customer_email=request.customer_email,
+            customer_email=user.email,
             metadata={
                 'group_id': str(request.group_id),
                 'user_id': str(user.id)
@@ -910,7 +910,7 @@ async def create_stripe_checkout_session(
             group_id=request.group_id,
             owner_id=user.id,
             stripe_session_id=checkout_session.id,
-            customer_email=request.customer_email
+            customer_email=user.email
         )
         session.add(payment)
         await session.commit()
