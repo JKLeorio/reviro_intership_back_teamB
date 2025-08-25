@@ -59,6 +59,7 @@ class UserPartialUpdate(schemas.CreateUpdateDictModel):
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
     email: Optional[EmailStr] = None
+    description: Optional[str] = None
 
 
 class StudentResponse(BaseModel):
