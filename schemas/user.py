@@ -20,6 +20,7 @@ class UserBase(BaseModel):
     email: str
     phone_number: Optional[str] = None
     role: Role
+    description: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,6 +50,7 @@ class UserUpdate(schemas.CreateUpdateDictModel):
     first_name: str
     last_name: str
     phone_number: str
+    email: EmailStr
 
 
 class UserPartialUpdate(schemas.CreateUpdateDictModel):
@@ -56,6 +58,7 @@ class UserPartialUpdate(schemas.CreateUpdateDictModel):
     last_name: Optional[str] = Field(None, min_length=1, max_length=50)
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
+    email: Optional[EmailStr] = None
 
 
 class StudentResponse(BaseModel):
@@ -81,6 +84,7 @@ class UserFullnameResponse(BaseModel):
 
 class TeacherResponse(UserResponse):
     role: str
+    description: str | None = None
 
 
 class StudentTeacherRegister(UserRegister):
@@ -90,6 +94,7 @@ class StudentTeacherRegister(UserRegister):
 class StudentTeacherCreate(UserCreate):
     phone_number: Optional[str] = None
     role: Role = Role.STUDENT
+    description: Optional[str] = None
 
 
 class AdminCreate(UserCreate):
@@ -146,37 +151,43 @@ class UserFullNameRegister(BaseModel):
     _last_name: Optional[str] = PrivateAttr(default=None)
 
     email: EmailStr = Field(..., max_length=254)
-    role: Role = Field(
-        Role.STUDENT,
-        description="User role, default is 'STUDENT'")
-    phone_number: Optional[str] = None
+    phone_number: str = None
 
     @model_validator(mode='after')
     def validate_full_name_field(self):
-        names = validate_full_name(self.full_name)
-        self._first_name = names['first_name']
-        self._last_name = names['last_name']
+        if self.full_name is not None:
+            names = validate_full_name(self.full_name)
+            self._first_name = names['first_name']
+            self._last_name = names['last_name']
         return self
     
     def model_dump(self, *args, **kwargs):
         data = super().model_dump(*args, **kwargs)
-        data["first_name"] = self._first_name
-        data["last_name"] = self._last_name
+        if self.full_name is not None:
+            data["first_name"] = self._first_name
+            data["last_name"] = self._last_name
         return data
 
+class UserFullNameUpdate(UserFullNameRegister):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
 
 class StudentRegister(UserFullNameRegister):
     role: Literal[Role.STUDENT] = Role.STUDENT
+
+class TeacherFullNameResponse(UserFullnameResponse):
+    description: str | None = None
+
 
 class TeacherRegister(UserFullNameRegister):
     role: Literal[Role.TEACHER] = Role.TEACHER
     description: Optional[str] = None
 
-
-class TeacherWithGroupResponse(UserFullnameResponse):
+class TeacherWithGroupResponse(TeacherFullNameResponse):
     group_id: int
 
-class TeacherWithCourseResponse(UserFullnameResponse):
+class TeacherWithCourseResponse(TeacherFullNameResponse):
     courses: list[CourseShortResponse]
 
 class TeachersWithCourseAndPagination(BaseModel):
