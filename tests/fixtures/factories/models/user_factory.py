@@ -25,5 +25,6 @@ class UserFactory(CustomFactoryBase):
     # is_active = factory.Faker('pybool')
     is_verified = True
     is_active = True
+    description = factory.Faker("paragraph")
 
 
