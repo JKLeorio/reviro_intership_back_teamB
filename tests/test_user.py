@@ -126,12 +126,12 @@ async def test_teacher_update(
     client,
     modern_user_factory
 ):
-    user = await modern_user_factory()
+    user = await modern_user_factory(role=Role.TEACHER)
     json = {
         'email': 'up1email@mail.com',
         'phone_number': '1111111111143243'
     }
-    response = await client.patch(f"/user/student/{user.id}", json=json)
+    response = await client.patch(f"/user/teacher/{user.id}", json=json)
     assert response.status_code == status.HTTP_200_OK
 
 @pytest.mark.anyio
@@ -139,10 +139,10 @@ async def test_student_update(
     client,
     modern_user_factory
 ):
-    user = await modern_user_factory()
+    user = await modern_user_factory(role=Role.STUDENT)
     json = {
         'email': 'up22email@mail.com',
         'phone_number': '11111111113243'
     }
-    response = await client.patch(f"/user/teacher/{user.id}", json=json)
+    response = await client.patch(f"/user/student/{user.id}", json=json)
     assert response.status_code == status.HTTP_200_OK
