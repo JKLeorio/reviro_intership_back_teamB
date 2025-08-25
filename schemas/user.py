@@ -59,6 +59,7 @@ class UserPartialUpdate(schemas.CreateUpdateDictModel):
     phone_number: Optional[str] = Field(
         None, description="User's phone number")
     email: Optional[EmailStr] = None
+    description: Optional[str] = None
 
 
 class StudentResponse(BaseModel):
@@ -172,6 +173,7 @@ class UserFullNameUpdate(UserFullNameRegister):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone_number: Optional[str] = None
+    description: Optional[str] = None
 
 class StudentRegister(UserFullNameRegister):
     role: Literal[Role.STUDENT] = Role.STUDENT
