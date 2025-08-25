@@ -172,6 +172,7 @@ class UserFullNameUpdate(UserFullNameRegister):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone_number: Optional[str] = None
+    description: Optional[str] = None
 
 class StudentRegister(UserFullNameRegister):
     role: Literal[Role.STUDENT] = Role.STUDENT
