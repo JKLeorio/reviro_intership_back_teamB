@@ -23,5 +23,5 @@ class TeacherRegisterDataFactory(Factory):
     full_name = Faker('name')
     email = Faker('email')
     phone_number = Faker('phone_number')
-    # description = Faker('paragraph')
+    description = Faker('paragraph')
     role = Role.TEACHER

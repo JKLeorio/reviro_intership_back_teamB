@@ -306,5 +306,6 @@ async def register_teacher_with_group(
         phone_number=new_user.phone_number,
         email=new_user.email,
         role=new_user.role,
-        group_id=group_id
+        group_id=group_id,
+        description=new_user.description
     )

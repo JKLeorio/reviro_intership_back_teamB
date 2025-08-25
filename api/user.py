@@ -34,6 +34,7 @@ from schemas.course import CourseShortResponse, ProfileCourse
 from schemas.pagination import Pagination
 from schemas.user import (
     StudentProfile,
+    TeacherFullNameResponse,
     TeacherProfile,
     TeacherWithCourseResponse,
     TeachersWithCourseAndPagination,
@@ -385,7 +386,7 @@ async def student_partial_update(
 
 @user_router.patch(
     '/teacher/{teacher_id}',
-    response_model=UserFullnameResponse,
+    response_model=TeacherFullNameResponse,
     status_code=status.HTTP_200_OK
 )
 async def teacher_partial_update(
@@ -419,7 +420,7 @@ async def teacher_partial_update(
         )
     teacher_data = UserPartialUpdate(**teacher_data.model_dump(exclude_none=True))
     updated_user = await user_manager.update(teacher_data, user_to_update)
-    return UserFullnameResponse.model_validate(updated_user)
+    return TeacherFullNameResponse.model_validate(updated_user)
 
     
 

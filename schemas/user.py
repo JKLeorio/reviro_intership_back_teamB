@@ -83,6 +83,7 @@ class UserFullnameResponse(BaseModel):
 
 class TeacherResponse(UserResponse):
     role: str
+    description: str | None = None
 
 
 class StudentTeacherRegister(UserRegister):
@@ -92,6 +93,7 @@ class StudentTeacherRegister(UserRegister):
 class StudentTeacherCreate(UserCreate):
     phone_number: Optional[str] = None
     role: Role = Role.STUDENT
+    description: Optional[str] = None
 
 
 class AdminCreate(UserCreate):
@@ -173,15 +175,18 @@ class UserFullNameUpdate(UserFullNameRegister):
 class StudentRegister(UserFullNameRegister):
     role: Literal[Role.STUDENT] = Role.STUDENT
 
+class TeacherFullNameResponse(UserFullnameResponse):
+    description: str | None = None
+
+
 class TeacherRegister(UserFullNameRegister):
     role: Literal[Role.TEACHER] = Role.TEACHER
     description: Optional[str] = None
 
-
-class TeacherWithGroupResponse(UserFullnameResponse):
+class TeacherWithGroupResponse(TeacherFullNameResponse):
     group_id: int
 
-class TeacherWithCourseResponse(UserFullnameResponse):
+class TeacherWithCourseResponse(TeacherFullNameResponse):
     courses: list[CourseShortResponse]
 
 class TeachersWithCourseAndPagination(BaseModel):
