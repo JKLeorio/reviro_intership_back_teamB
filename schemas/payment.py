@@ -212,8 +212,6 @@ class FinanceRow(BaseModel):
 class StripeCheckoutRequest(BaseModel):
 
     group_id: int
-
-    customer_email: str
     success_url: Optional[str] = None
     cancel_url: Optional[str] = None
 
