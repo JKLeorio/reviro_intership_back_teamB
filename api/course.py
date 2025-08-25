@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import Depends, status, APIRouter, HTTPException
+from fastapi import Depends, status, APIRouter, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -193,17 +193,24 @@ async def destroy_level(id: int, db: AsyncSession = Depends(get_async_session),
 
 
 @course_router.get("/", response_model=List[CourseRead], status_code=status.HTTP_200_OK)
-async def courses_list(db: AsyncSession = Depends(get_async_session)):
+async def courses_list(db: AsyncSession = Depends(get_async_session),
+                       lang_id: Optional[int] = Query(None),
+                       search: Optional[str] = Query(None)):
     '''
     Returns a list of courses
     '''
-    result = await db.execute(
+    result = (
         select(Course).options(
             selectinload(Course.language),
             selectinload(Course.level)
         )
-    )
-    return result.scalars().all()
+    ).order_by(Course.id)
+    if lang_id is not None:
+        result = result.where(Course.language_id == lang_id)
+    if search:
+        result = result.where(Course.name.ilike(f"%{search}%"))
+    courses = await db.execute(result)
+    return courses.scalars().all()
 
 
 @course_router.get("/{id}", response_model=CourseRead, status_code=status.HTTP_200_OK)

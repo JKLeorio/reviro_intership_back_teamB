@@ -3,9 +3,8 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 from db.types import PaymentDetailStatus, PaymentStatus
-from schemas.course import CourseRead
 from schemas.pagination import Pagination
-from schemas.user import StudentResponse, TeacherResponse, UserResponse
+from schemas.user import StudentResponse, TeacherResponse, UserFullnameResponse, UserResponse
 
 
 class GroupBase(BaseModel):
@@ -64,6 +63,9 @@ class GroupCreate(BaseModel):
     course_id: int
     teacher_id: int
 
+class GroupShort(BaseModel):
+    id: int
+    name: str
 
 class GroupUpdate(GroupCreate):
     pass
@@ -91,16 +93,29 @@ class GroupStudentUpdate(GroupUpdate):
 class GroupStundentPartialUpdate(GroupPartialUpdate):
     students: Optional[List[int]]
 
+class StudentWithGroupResponse(UserFullnameResponse):
+    groups: list[GroupShort]
+
+class StudentWithGroupAndPagination(BaseModel):
+    students: list[StudentWithGroupResponse]
+    pagination: Pagination
+
+class StudentDetailResponse(UserFullnameResponse):
+    payment_status: PaymentDetailStatus
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GroupStudentDetailResponse(BaseModel):
-    student: StudentResponse
+    student: UserFullnameResponse
     payment_status: PaymentDetailStatus
     attendance_ratio: float
-    
-
 
 class GroupProfileResponse(BaseModel):
     groups: list[ProfileGroup]
     pagination: Pagination
 
+
+
+class GroupStudentDetailListResponse(GroupStudentResponse):
+    students: list[StudentDetailResponse]

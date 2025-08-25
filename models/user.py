@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List
-from sqlalchemy import Column, String, DateTime, ForeignKey, Table, Enum
+from sqlalchemy import Column, String, DateTime, ForeignKey, Table, Enum, Text
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from fastapi_users.db import SQLAlchemyBaseUserTable
 
@@ -36,6 +36,10 @@ class User(SQLAlchemyBaseUserTable[int], Base):
 
     role: Mapped[Role] = mapped_column(
         Enum(Role, name="role", create_type=False), nullable=False)
+    
+    description: Mapped[str] = mapped_column(
+        Text, nullable=True
+    )
 
     groups_taught: Mapped[List["Group"]] = relationship(back_populates="teacher")
 
@@ -54,3 +58,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
       
     def __str__(self):
         return f"({self.id}){self.email} <-> {self.first_name} {self.last_name}"
+    
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
