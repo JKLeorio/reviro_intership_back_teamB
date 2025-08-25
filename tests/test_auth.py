@@ -129,5 +129,4 @@ async def test_register_teacher_with_group(
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data['group_id'] == group.id
-
     dict_comparator(json, data)

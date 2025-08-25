@@ -34,10 +34,13 @@ from schemas.course import CourseShortResponse, ProfileCourse
 from schemas.pagination import Pagination
 from schemas.user import (
     StudentProfile,
+    TeacherFullNameResponse,
     TeacherProfile,
     TeacherWithCourseResponse,
     TeachersWithCourseAndPagination,
     UserBase,
+    UserFullNameUpdate,
+    UserFullnameResponse,
     UserPartialUpdate,
     UserResponse,
     UserUpdate
@@ -45,6 +48,24 @@ from schemas.user import (
 
 user_router = routing.APIRouter()
 
+
+async def is_email_exist(email: str, session: AsyncSession) -> None:
+    if (await session.execute(select(User).where(User.email == email))).scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='user with this email is already exists'
+        )
+
+async def is_phone_exist(phone_number: str, session: AsyncSession) -> None:
+    if (await session.execute(select(User).where(User.phone_number == phone_number))).scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='user with this email is already exists'
+        )
+    
+async def validate_user_unique(email: str, phone_number: str, session) -> None:
+    await is_email_exist(email, session)
+    await is_phone_exist(phone_number, session)
 
 
 class UserFilter(Filter):
@@ -323,6 +344,86 @@ async def user_list(
     users = await session.execute(query)
     return users.scalars().all()
 
+@user_router.patch(
+    '/student/{student_id}',
+    response_model=UserFullnameResponse,
+    status_code=status.HTTP_200_OK
+)
+async def student_partial_update(
+    student_id: int,
+    student_data: UserFullNameUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+    user_manager: UserManager = Depends(get_user_manager)
+):
+    """
+    Partial update student personal data
+    student_id: integer -> user id
+    ROLES -> admin
+    """
+    try:
+        user_to_update = await user_manager.get(student_id)
+    except UserNotExists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='student not found'
+            )
+    if user_to_update.role != Role.STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='student not found'
+            )
+    await validate_user_unique(
+        email=student_data.email,
+        phone_number=student_data.phone_number,
+        session=session
+        )
+    student_data = UserPartialUpdate(**student_data.model_dump(exclude_none=True))
+    updated_user = await user_manager.update(student_data, user_to_update)
+    return UserFullnameResponse.model_validate(updated_user)
+
+
+
+@user_router.patch(
+    '/teacher/{teacher_id}',
+    response_model=TeacherFullNameResponse,
+    status_code=status.HTTP_200_OK
+)
+async def teacher_partial_update(
+    teacher_id: int,
+    teacher_data: UserFullNameUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+    user_manager: UserManager = Depends(get_user_manager)
+):
+    """
+    Partial update teacher personal data
+    teacher_id: integer -> user id
+    ROLES -> admin
+    """
+    try:
+        user_to_update = await user_manager.get(teacher_id)
+    except UserNotExists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='teacher not found'
+            )
+    if user_to_update.role != Role.TEACHER:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='teacher not found'
+            )
+    await validate_user_unique(
+        email=teacher_data.email,
+        phone_number=teacher_data.phone_number,
+        session=session
+        )
+    teacher_data = UserPartialUpdate(**teacher_data.model_dump(exclude_none=True))
+    updated_user = await user_manager.update(teacher_data, user_to_update)
+    return TeacherFullNameResponse.model_validate(updated_user)
+
+    
+
 
 @user_router.get(
     '/{user_id}', 
@@ -360,6 +461,7 @@ async def user_update(
     user_id: int,
     user_update:  UserUpdate,
     user_manager: UserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
     '''
@@ -372,7 +474,11 @@ async def user_update(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail={"detail": "User doesn't exist"}
             )
-    
+    await validate_user_unique(
+        email=user_update.email,
+        phone_number=user_update.phone_number,
+        session=session
+        )
     updated_user = await user_manager.update(user_update=user_update, user=old_user)
     return updated_user
 
@@ -385,6 +491,7 @@ async def user_partial_update(
     user_id: int,
     user_update: UserPartialUpdate,
     user_manager: UserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
     '''
@@ -397,6 +504,12 @@ async def user_partial_update(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail={"detail": "User doesn't exist"}
             )
+    await validate_user_unique(
+        email=user_update.email,
+        phone_number=user_update.phone_number,
+        session=session
+        )
+    teacher_data = UserPartialUpdate(teacher_data.model_dump(exclude_none=True))
     updated_user = await user_manager.update(user_update=user_update, user=old_user)
     return updated_user
 
