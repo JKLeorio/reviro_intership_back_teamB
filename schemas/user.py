@@ -20,6 +20,7 @@ class UserBase(BaseModel):
     email: str
     phone_number: Optional[str] = None
     role: Role
+    description: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
