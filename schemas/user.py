@@ -97,6 +97,10 @@ class StudentTeacherCreate(UserCreate):
     role: Role = Role.STUDENT
     description: Optional[str] = None
 
+class TeacherCreate(UserCreate):
+    phone_number: Optional[str] = None
+    role: Role = Role.STUDENT
+    description: Optional[str] = None
 
 class AdminCreate(UserCreate):
     phone_number: Optional[str] = None
