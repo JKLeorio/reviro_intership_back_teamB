@@ -536,3 +536,116 @@ async def user_delete(
             )
     await user_manager.delete(user=user_to_delete)
     return
+
+
+#Временно, костыль для избежания циркулярного импорта
+class TeacherCourseGroupResponse(TeacherFullNameResponse):
+    groups: list[GroupShort]
+    courses: list[CourseShortResponse]
+
+class StudentCourseGroupResponse(UserFullnameResponse):
+    groups: list[GroupShort]
+    courses: list[CourseShortResponse]
+
+
+@user_router.get(
+    '/teacher/{user_id}',
+    response_model=TeacherCourseGroupResponse,
+    status_code=status.HTTP_200_OK
+)
+async def get_teacher_detail_profile_data(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)  
+):
+    stmt = (
+        select(User)
+        .where(User.id == user_id)
+        .options(
+            selectinload(User.groups_taught)
+            .selectinload(Group.course)
+        )
+    )
+    result = await session.execute(stmt)
+    teacher = result.scalar_one_or_none()
+    if (teacher is None) or (teacher.role != Role.TEACHER):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Teacher not found'
+        )
+    
+    groups = [
+        GroupShort.model_validate(group, from_attributes=True) 
+        for group in teacher.groups_taught
+        ]
+    courses = {
+        group.course for group in teacher.groups_taught
+        }
+    courses = [
+        CourseShortResponse.model_validate(course, from_attributes=True)
+        for course in courses
+        ]
+    response = TeacherCourseGroupResponse(
+        id=teacher.id,
+        full_name=teacher.full_name,
+        email=teacher.email,
+        phone_number=teacher.phone_number,
+        role=teacher.role,
+        is_active=teacher.is_active,
+        description=teacher.description,
+        groups=groups,
+        courses=courses
+    )
+    return response
+    
+
+
+
+@user_router.get(
+    '/student/{user_id}',
+    response_model=StudentCourseGroupResponse,
+    status_code=status.HTTP_200_OK
+)
+async def get_teacher_detail_profile_data(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)  
+):
+    stmt = (
+        select(User)
+        .where(User.id == user_id)
+        .options(
+            selectinload(User.groups_joined)
+            .selectinload(Group.course)
+        )
+    )
+    result = await session.execute(stmt)
+    student = result.scalar_one_or_none()
+    if (student is None) or (student.role != Role.STUDENT):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Student not found'
+        )
+    
+    groups = [
+        GroupShort.model_validate(group, from_attributes=True) 
+        for group in student.groups_joined
+        ]
+    courses = {
+        group.course for group in student.groups_joined
+        }
+    courses = [
+        CourseShortResponse.model_validate(course, from_attributes=True)
+        for course in courses
+        ]
+    response = StudentCourseGroupResponse(
+        id=student.id,
+        full_name=student.full_name,
+        email=student.email,
+        phone_number=student.phone_number,
+        role=student.role,
+        is_active=student.is_active,
+        groups=groups,
+        courses=courses
+    )
+    return response

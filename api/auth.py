@@ -9,7 +9,7 @@ from api.permissions import require_roles
 from models.group import Group
 from models.user import User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherRegister, TeacherWithGroupResponse, UserResponse, AdminRegister
+from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherCreate, TeacherRegister, TeacherWithGroupResponse, UserResponse, AdminRegister
 from schemas.group import GroupShort, StudentWithGroupResponse
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from typing import Annotated, Any, List, Optional
@@ -288,7 +288,7 @@ async def register_teacher_with_group(
     password = generate_password()
     user_data_dump = user_data.model_dump()
     user_data_dump['password'] = password
-    new_user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
+    new_user = await user_manager.create(TeacherCreate(**user_data_dump))
 
     new_user = await session.merge(new_user)
     await session.refresh(new_user)
