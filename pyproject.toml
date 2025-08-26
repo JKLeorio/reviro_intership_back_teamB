@@ -13,6 +13,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "autopep8>=2.3.2",
     "black>=25.1.0",
+    "dotenv>=0.9.9",
     "factory-boy>=3.3.3",
     "fastapi-filter>=2.0.1",
     "fastapi-users[sqlalchemy]>=14.0.1",
@@ -24,8 +25,12 @@ dependencies = [
     "pytest>=8.4.1",
     "python-dateutil>=2.9.0.post0",
     "python-decouple>=3.8",
+
+    "python-dotenv>=1.1.1",
+
     "setuptools>=80.9.0",
     "sqladmin[full]>=0.21.0",
     "sqlalchemy>=2.0.41",
+    "stripe==7.7.0",
     "uvicorn>=0.34.3",
 ]

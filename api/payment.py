@@ -19,30 +19,40 @@ from api.auth import current_admin_user, current_user, current_student_user
 from api.utils import validate_related_fields
 from db.database import get_async_session
 from db.dbbase import Base
+
 from db.types import (Currency, PaymentDetailStatus, PaymentMethod,
                       PaymentStatus, SubscriptionStatus, Role)
+
 from models.course import Course
 from models.group import Group
 from models.payment import Payment, PaymentDetail, Subscription, PaymentRequisite, PaymentCheck
 from models.user import User
 
-from schemas.payment import (PaymentCreate, PaymentDetailBase, PaymentDetailUpdate,
-                             PaymentDetailRead, PaymentPartialUpdate, PaymentRequisiteRead,
-                             PaymentResponse, PaymentUpdate, PaymentCheckRead,
-                             SubscriptionCreate, SubscriptionPartialUpdate,
-                             SubscriptionResponse, SubscriptionUpdate, PaymentShort, FinanceRow)
+from schemas.payment import (
+    PaymentCreate, PaymentDetailBase, PaymentDetailUpdate, PaymentDetailRead, PaymentPartialUpdate,
+    PaymentRequisiteRead, PaymentResponse, PaymentUpdate, PaymentCheckRead, SubscriptionCreate,
+    SubscriptionPartialUpdate, SubscriptionResponse, SubscriptionUpdate, PaymentShort, FinanceRow,
+    StripeCheckoutRequest, StripeCheckoutResponse, StripePaymentCreate
+)
 from schemas.pagination import PaginatedResponse, Pagination
 
 from utils.ext_and_size_validation_file import validate_file
 from utils.minio_client import minio_client
 from utils.checks_filters import CheckParams, build_checks_query, build_finance_query
 
+import stripe
+from fastapi import Request
+from decouple import config
+
+stripe.api_key = config('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET')
+
 subscription_router = routing.APIRouter()
 payment_router = routing.APIRouter()
 payment_details = routing.APIRouter()
 payment_requisites = routing.APIRouter()
 payment_checks_router = routing.APIRouter()
-
+stripe_router = routing.APIRouter()
 
 class SubscriptionFilter(Filter):
     status__in: Optional[List[SubscriptionStatus]] = None
@@ -53,7 +63,6 @@ class SubscriptionFilter(Filter):
     class Constants(Filter.Constants):
         model = Subscription
 
-
 class PaymentFilter(Filter):
     payment_method__in: Optional[List[PaymentMethod]] = None
     payment_status__in: Optional[List[PaymentStatus]] = None
@@ -63,7 +72,6 @@ class PaymentFilter(Filter):
     class Constants(Filter.Constants):
         model = Payment
 
-
 async def validate_related_fields(models_ids: Dict[Base, int], session: AsyncSession):
     for model, m_id in models_ids.items():
         if not await session.get(model, m_id):
@@ -72,6 +80,7 @@ async def validate_related_fields(models_ids: Dict[Base, int], session: AsyncSes
                 detail={'detail':f'{model.__name__} not found'}
                 )
     return
+
 
 
 @subscription_router.get(
@@ -84,10 +93,12 @@ async def subscription_list(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
+
     """
     Returns a list of subscriptions
     you can use filters with query
     """
+
     query = (
         select(Subscription)
         .offset(offset=offset)
@@ -99,10 +110,11 @@ async def subscription_list(
     )
     query = subcription_filter.filter(query=query)
 
+
     subscriptions = await session.execute(query)
 
-    return subscriptions.scalars().all()
 
+    return subscriptions.scalars().all()
 
 @subscription_router.get(
     "/{subscription_uuid}",
@@ -114,25 +126,29 @@ async def subscription_detail(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
+
     """
     Returns detailed subscription data by subscription id
     """
+
     subscription = await session.get(
         Subscription,
         subscription_uuid,
         options=[
             selectinload(Subscription.owner),
             selectinload(Subscription.course)
+
             ]
         )
+
     if subscription is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Subscription not found'}
+
             )
-
     return subscription
-
+  
 
 @subscription_router.post(
     "/", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED
@@ -142,13 +158,15 @@ async def subscription_create(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
+
     """
     Creates a subscription from the submitted data
     """
+
     await validate_related_fields(
         {
-            Course : subscription_create.course_id,
-            User : subscription_create.owner_id
+            Course: subscription_create.course_id,
+            User: subscription_create.owner_id
         },
         session=session
     )
@@ -165,6 +183,7 @@ async def subscription_create(
     return subscription
 
 
+
 @subscription_router.put(
     "/{subscription_uuid}",
     response_model=SubscriptionResponse,
@@ -176,9 +195,11 @@ async def subscription_update(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
+
     """
     Updates a subscription by subscription id from the submitted data
     """
+
     subscription = await session.get(
         Subscription,
         subscription_uuid,
@@ -191,12 +212,10 @@ async def subscription_update(
         )
 
     await validate_related_fields(
-        {Course, subscription_update.course_id}, session=session
+        {Course: subscription_update.course_id}, session=session
     )
-
     for key, value in subscription_update.model_dump().items():
         setattr(subscription, key, value)
-
     await session.commit()
     await session.refresh(subscription)
     return subscription
@@ -213,9 +232,11 @@ async def subscription_partial_update(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
+
     """
     Partial updates a subscription by subscription id from the submitted data
     """
+
     subscription = await session.get(
         Subscription,
         subscription_uuid,
@@ -228,12 +249,10 @@ async def subscription_partial_update(
         )
 
     await validate_related_fields(
-        {Course, subscription_update.course_id}, session=session
+        {Course: subscription_update.course_id}, session=session
     )
-
     for key, value in subscription_update.model_dump(exclude_unset=True).items():
         setattr(subscription, key, value)
-
     await session.commit()
     await session.refresh(subscription)
     return subscription
@@ -247,9 +266,11 @@ async def subscription_delete(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
+
     """
     Delete subscription by subscription id
     """
+
     subscription = await session.get(
         Subscription,
         subscription_uuid,
@@ -260,38 +281,9 @@ async def subscription_delete(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"detail": "Subscription not found"},
         )
-
     await session.delete(subscription)
     await session.commit()
-
     return
-
-
-# @payment_router.get(
-#     '/',
-#     response_model=List[PaymentResponse],
-#     status_code=status.HTTP_200_OK
-# )
-# async def payment_list(
-#     offset: int = 0,
-#     limit: int = 10,
-#     payment_filter: PaymentFilter = FilterDepends(PaymentFilter),
-#     session: AsyncSession = Depends(get_async_session),
-#     user: User = Depends(current_admin_user)
-# ):
-#     '''
-#     Returns a list of payments
-#     you can use filters with query
-#     '''
-#     query = select(Payment).offset(offset=offset).limit(limit=limit).options(
-#         selectinload(Payment.owner),
-#         selectinload(Payment.subscription)
-#     )
-#     query = payment_filter.filter(query=query)
-#     payments = await session.execute(query)
-#
-#     return payments.scalars().all()
-
 
 @payment_router.get(
     '/{payment_id}',
@@ -303,25 +295,27 @@ async def payment_detail(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+
     '''
     Returns detailed payment data by payment id
     '''
+
     payment = await session.get(
         Payment,
         payment_id,
         options=[
             selectinload(Payment.owner),
             selectinload(Payment.subscription)
+
             ]
         )
+
     if not payment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
-            )
-
+        )
     return payment
-
 
 @payment_router.post(
     '/',
@@ -333,9 +327,11 @@ async def payment_create(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+
     '''
     Creates a payment from the submitted data
     '''
+
     await validate_related_fields(
         {
             User: payment_create.owner_id,
@@ -350,11 +346,11 @@ async def payment_create(
     await session.commit()
     await session.refresh(payment, attribute_names=[
         'owner',
-        'subscription'
-    ])
+        'subscription'])
+
+
 
     return payment
-
 
 @payment_router.put(
     '/{payment_id}',
@@ -367,26 +363,30 @@ async def payment_update(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+
     '''
     Updates a payment by payment id from the submitted data
     '''
+
     payment = await session.get(
         Payment,
         payment_id,
         options=[
             selectinload(Payment.owner),
             selectinload(Payment.subscription)
+
             ]
         )
+
     if not payment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
+
             )
 
     for key, value in payment_update.model_dump().items():
         setattr(payment, key, value)
-
     await session.commit()
     await session.refresh(payment)
     return payment
@@ -403,9 +403,11 @@ async def payment_partial_update(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+
     '''
     Partial updates a payment by payment id from the submitted data
     '''
+
     payment = await session.get(
         Payment,
         payment_id,
@@ -414,14 +416,16 @@ async def payment_partial_update(
             selectinload(Payment.subscription)
             ]
         )
+
     if not payment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
-            )
 
+            )
     for key, value in payment_update.model_dump(exclude_unset=True).items():
         setattr(payment, key, value)
+
 
     await session.commit()
     await session.refresh(payment)
@@ -436,28 +440,33 @@ async def payment_delete(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+
     '''
     Delete payment by payment id
     '''
+
     payment = await session.get(
         Payment,
         payment_id,
         options=[
             selectinload(Payment.owner),
             selectinload(Payment.subscription)
+
             ]
         )
+
     if not payment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={'detail': 'Payment not found'}
+
             )
 
     await session.delete(payment)
     await session.commit()
     return
 
-
+  
 async def create_initial_payment(
     student_id: int, group_id: int, db: AsyncSession
 ):
@@ -510,6 +519,7 @@ async def get_payments_detail(group_id: Optional[int] = Query(default=None),
                               payment_status: Optional[PaymentDetailStatus] = Query(default=None),
                               db: AsyncSession = Depends(get_async_session),
                               user: User = Depends(current_admin_user)):
+
     filters = []
     if payment_status is not None:
         filters.append(PaymentDetail.status == payment_status)
@@ -519,6 +529,7 @@ async def get_payments_detail(group_id: Optional[int] = Query(default=None),
         filters.append(PaymentDetail.student_id == student_id)
     if student_id is None and group_id is None:
         raise HTTPException(status_code=400, detail="Should provide either student_id or group_id")
+
     result = await db.execute(select(PaymentDetail).where(and_(*filters)).options(
         selectinload(PaymentDetail.group),
         selectinload(PaymentDetail.student)
@@ -623,6 +634,7 @@ async def update_payment_by_payment_id(data: PaymentDetailUpdate,
     return payment
 
 
+
 @payment_details.delete('/', status_code=status.HTTP_200_OK)
 async def destroy_payment_by_payment_id(payment_id: Optional[int] = Query(default=None),
                                         group_id: Optional[int] = Query(default=None),
@@ -630,11 +642,13 @@ async def destroy_payment_by_payment_id(payment_id: Optional[int] = Query(defaul
                                         db: AsyncSession = Depends(get_async_session),
                                         user: User = Depends(current_admin_user)):
     payment = payment = await get_payment_by_id_or_pair(db, payment_id, group_id, student_id)
+
     if not payment:
         raise HTTPException(status_code=404, detail='Payment detail not found')
     await db.delete(payment)
     await db.commit()
     return {'detail': "Payment detail has been deleted"}
+
 
 
 @payment_requisites.post('/', response_model=PaymentRequisiteRead, status_code=status.HTTP_201_CREATED)
@@ -646,7 +660,6 @@ async def create_payment_requisite(bank_name: str = Form(None), account: str = F
 
     if not qr.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="QR file must be an image")
-
     try:
         file_path = await minio_client.upload_file(qr)
     except Exception as e:
@@ -662,12 +675,13 @@ async def create_payment_requisite(bank_name: str = Form(None), account: str = F
     await db.refresh(requisites)
     return requisites
 
-
+  
 async def get_requisite_or_none(requisite_id: int, db: AsyncSession):
     requisites = await db.get(PaymentRequisite, requisite_id)
     if requisites is None:
         raise HTTPException(status_code=404, detail="Payment requisites not found")
     return requisites
+
 
 
 @payment_requisites.patch('/{requisite_id}', response_model=PaymentRequisiteRead)
@@ -676,6 +690,7 @@ async def update_payment_requisites(requisite_id: int, bank_name: Optional[str] 
                                     qr: Optional[UploadFile] = File(None),
                                     db: AsyncSession = Depends(get_async_session),
                                     user: User = Depends(current_admin_user)):
+
     requisites = await get_requisite_or_none(requisite_id, db)
     if bank_name:
         requisites.bank_name = bank_name
@@ -720,9 +735,11 @@ async def get_requisites_list(db: AsyncSession = Depends(get_async_session)):
     ]
 
 
+
 @payment_requisites.delete("/{requisite_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def destroy_requisite_by_id(requisite_id: int, db: AsyncSession = Depends(get_async_session),
                                   user: User = Depends(current_admin_user)):
+
     requisites = await get_requisite_or_none(requisite_id, db)
     if requisites.qr:
         try:
@@ -742,7 +759,6 @@ async def create_payment_check(group_id: int, check: UploadFile = File(...),
     group = await db.get(Group, group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Group not found")
-
     is_member = await db.scalar(
         select(Group.id)
         .where(
@@ -794,9 +810,9 @@ async def download_check(check_id: int, db: AsyncSession = Depends(get_async_ses
     if user.id != check.student_id and user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
 
+
     if not check.check:
         raise HTTPException(status_code=404, detail="No file attached")
-
     try:
         file_stream = minio_client.download_file(check.check)
         return StreamingResponse(
@@ -852,6 +868,7 @@ async def update_payment_check(check_id: int, group_id: Optional[int] = None,
 @payment_checks_router.get('/user/{user_id}', response_model=List[PaymentCheckRead])
 async def get_checks_by_user_id(user_id: int, db: AsyncSession = Depends(get_async_session),
                                     curr_user: User = Depends(current_admin_user)):
+
     if curr_user.id != user_id and curr_user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
     user = await db.get(User, user_id)
@@ -882,6 +899,7 @@ async def get_checks_by_group_id(group_id: Optional[int] = None,
                                  student_id: Optional[int] = None,
                                  db: AsyncSession = Depends(get_async_session),
                                  user: User = Depends(current_admin_user)):
+
     params = CheckParams(group_id=group_id, student_id=student_id)
     q = await db.execute(build_checks_query(params))
     return q.unique().scalars().all()
@@ -889,7 +907,9 @@ async def get_checks_by_group_id(group_id: Optional[int] = None,
 
 @payment_checks_router.delete("/{check_id}", status_code=status.HTTP_200_OK)
 async def destroy_check_by_id(check_id: int, db: AsyncSession = Depends(get_async_session),
+
                               user: User = Depends(current_student_user)):
+
     check = await db.get(PaymentCheck, check_id)
     if check is None:
         raise HTTPException(status_code=404, detail='Check not found')
@@ -904,3 +924,150 @@ async def destroy_check_by_id(check_id: int, db: AsyncSession = Depends(get_asyn
     await db.delete(check)
     await db.commit()
     return {"detail": "Check has been deleted"}
+
+@stripe_router.post("/create-checkout-session/", response_model=StripeCheckoutResponse)
+async def create_stripe_checkout_session(
+    request: StripeCheckoutRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_user)
+):
+
+    group = await session.get(
+        Group,
+        request.group_id,
+        options=[selectinload(Group.course)]
+    )
+    if not group:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found"
+        )
+    try:
+        stripe_product = stripe.Product.create(
+            name=f"Group: {group.name}",
+            description=f"Payment for {group.name}"
+        )
+        stripe_price = stripe.Price.create(
+            product=stripe_product.id,
+            unit_amount=int(group.course.price * 100),
+            currency='kgs',
+
+        )
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price': stripe_price.id,
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=request.success_url or 'https://your-domain.com/success',
+            cancel_url=request.cancel_url or 'https://your-domain.com/cancel',
+            customer_email=user.email,
+            metadata={
+
+                'group_id': str(request.group_id),
+
+                'user_id': str(user.id)
+            }
+        )
+        payment = Payment(
+
+            amount=group.course.price,
+            payment_method=PaymentMethod.stripe,
+            payment_status=PaymentStatus.PENDING,
+            currency=Currency.KGS,
+            group_id=request.group_id,
+
+            owner_id=user.id,
+            stripe_session_id=checkout_session.id,
+            customer_email=user.email
+        )
+        session.add(payment)
+        await session.commit()
+        return StripeCheckoutResponse(
+            checkout_url=checkout_session.url,
+            session_id=checkout_session.id
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Stripe error: {str(e)}"
+        )
+
+
+@stripe_router.post("/webhook")
+async def stripe_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session)
+):
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature')
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid payload"
+        )
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid signature"
+        )
+    if event['type'] == 'checkout.session.completed':
+        stripe_session = event['data']['object']
+        result = await session.execute(
+            select(Payment).where(and_(Payment.payment_status == PaymentStatus.PENDING,
+                Payment.stripe_session_id == stripe_session['id']))
+        )
+        payment = result.scalar_one_or_none()
+        if payment:
+            payment.payment_status = PaymentStatus.PAID.value
+            payment.stripe_payment_intent_id = stripe_session.get('payment_intent')
+            pid = payment.id
+
+            owner_id = payment.owner_id
+            group_id = payment.group_id
+
+            res = await session.execute(
+                select(PaymentDetail).where(and_(PaymentDetail.group_id == group_id,
+                                                 PaymentDetail.student_id == owner_id))
+            )
+
+            detail = res.scalar_one_or_none()
+            if detail:
+                detail.months_paid = detail.months_paid + 1
+                detail.deadline = detail.joined_at + relativedelta(months=detail.months_paid)
+                if detail.current_month_number is not None and detail.months_paid is not None:
+                    detail.status = (
+                        PaymentDetailStatus.UNPAID
+                        if detail.current_month_number > detail.months_paid
+                        else PaymentDetailStatus.PAID
+                    )
+
+            await session.commit()
+    return {"status": "success"}
+
+
+@stripe_router.get("/payments/")
+
+async def get_stripe_payments(
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user)
+):
+
+    result = await session.execute(
+        select(Payment)
+
+        .where(Payment.payment_method == PaymentMethod.stripe)
+        .options(
+            selectinload(Payment.group),
+
+            selectinload(Payment.owner)
+        )
+        .order_by(Payment.created_at.desc())
+    )
+
+    return result.scalars().all()

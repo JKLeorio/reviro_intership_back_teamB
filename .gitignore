@@ -84,3 +84,7 @@ openapi.json
 build/
 dist/
 *.egg-info/
+
+minio-data/
+minio.exe
+*.exe
