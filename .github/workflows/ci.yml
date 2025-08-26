@@ -14,6 +14,7 @@ env:
   POSTGRES_PORT: 5432
   SECRET: reviro
   TEST_DB_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/eureka_test
+  STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
 
   MINIO_ROOT_USER: minioadmin
   MINIO_ROOT_PASSWORD: minioadmin
@@ -89,6 +90,7 @@ jobs:
         run: uv run pytest
         env:
           DATABASE_URL: ${{ env.TEST_DB_URL }}
+          STRIPE_SECRET_KEY: ${{ env.STRIPE_SECRET_KEY }}
           MINIO_ENDPOINT: ${{ env.MINIO_ENDPOINT }}
           PORT: ${{ env.PORT }}
           MINIO_ACCESS_KEY: ${{ env.MINIO_ACCESS_KEY }}
