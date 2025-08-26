@@ -13,7 +13,7 @@ class MinioClient:
             endpoint=f"{config('MINIO_ENDPOINT')}:{config('MINIO_PORT')}",
             access_key=config("MINIO_ACCESS_KEY", default="eurekaminioadmin"),
             secret_key=config("MINIO_SECRET_KEY", default="eurekaminioadmin"),
-            secure=config("MINIO_SECURE", default=False, cast=bool),
+            secure=config("MINIO_SECURE", cast=bool),
         )
         self.bucket_name = config("MINIO_BUCKET", default="eureka-bucket")
 
