@@ -1,8 +1,8 @@
-"""migration
+"""new_migrations
 
-Revision ID: 1d35e66d1554
+Revision ID: 74429088067c
 Revises: 
-Create Date: 2025-07-09 17:09:04.740348
+Create Date: 2025-08-26 11:50:28.524129
 
 """
 from typing import Sequence, Union
@@ -10,10 +10,12 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
+import db
+
 
 # revision identifiers, used by Alembic.
-revision: str = '1d35e66d1554'
-down_revision: Union[str, None] = '26729c51055a'
+revision: str = '74429088067c'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -41,6 +43,13 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('code')
     )
+    op.create_table('payment_requisites',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('bank_name', sa.String(), nullable=False),
+    sa.Column('account', sa.String(), nullable=False),
+    sa.Column('qr', sa.String(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('users',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('first_name', sa.String(), nullable=False),
@@ -48,6 +57,7 @@ def upgrade() -> None:
     sa.Column('phone_number', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('role', sa.Enum('TEACHER', 'STUDENT', 'ADMIN', name='role'), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
     sa.Column('email', sa.String(length=320), nullable=False),
     sa.Column('hashed_password', sa.String(length=1024), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
@@ -89,6 +99,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('start_date', sa.Date(), nullable=False),
     sa.Column('end_date', sa.Date(), nullable=False),
+    sa.Column('approximate_lesson_start', sa.Time(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('is_archived', sa.Boolean(), nullable=False),
     sa.Column('course_id', sa.Integer(), nullable=False),
@@ -111,10 +122,12 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('description', sa.Text(), nullable=False),
+    sa.Column('link', db.types.HttpUrlType(length=2083), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('day', sa.Date(), nullable=False),
     sa.Column('lesson_start', sa.Time(), nullable=False),
     sa.Column('lesson_end', sa.Time(), nullable=False),
+    sa.Column('passed', sa.Boolean(), nullable=False),
     sa.Column('teacher_id', sa.Integer(), nullable=False),
     sa.Column('group_id', sa.Integer(), nullable=False),
     sa.Column('classroom_id', sa.Integer(), nullable=False),
@@ -123,17 +136,45 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['teacher_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('payment_check',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('check', sa.String(), nullable=False),
+    sa.Column('student_id', sa.Integer(), nullable=True),
+    sa.Column('group_id', sa.Integer(), nullable=True),
+    sa.Column('uploaded_at', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['group_id'], ['groups.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['student_id'], ['users.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('payment_detail',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('student_id', sa.Integer(), nullable=False),
+    sa.Column('group_id', sa.Integer(), nullable=False),
+    sa.Column('price', sa.Float(), nullable=False),
+    sa.Column('joined_at', sa.Date(), nullable=False),
+    sa.Column('current_month_number', sa.Integer(), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('months_paid', sa.Integer(), nullable=False),
+    sa.Column('deadline', sa.Date(), nullable=False),
+    sa.Column('status', sa.Enum('PAID', 'UNPAID', name='paymentdetailstatus'), nullable=False),
+    sa.ForeignKeyConstraint(['group_id'], ['groups.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['student_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('payments',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('payment_method', sa.Enum('CASH', 'CARD', 'BANK_TRANSFER', 'ONLINE', 'PROMO', name='paymentmethod'), nullable=False),
+    sa.Column('payment_method', sa.Enum('cash', 'card', 'bank_transfer', 'online', 'promo', 'stripe', name='paymentmethod'), nullable=False),
     sa.Column('payment_status', sa.Enum('PENDING', 'PAID', 'FAILED', 'REFUNDED', 'CANCELED', name='paymentstatus'), nullable=False),
     sa.Column('currency', sa.Enum('KGS', 'RUB', 'USD', 'EUR', 'UZS', 'KZT', name='currency'), nullable=False),
-    sa.Column('subscription_id', sa.UUID(), nullable=False),
+    sa.Column('stripe_session_id', sa.String(), nullable=True),
+    sa.Column('stripe_payment_intent_id', sa.String(), nullable=True),
+    sa.Column('customer_email', sa.String(), nullable=True),
+    sa.Column('group_id', sa.Integer(), nullable=False),
     sa.Column('owner_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['group_id'], ['groups.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['subscription_id'], ['subscriptions.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('student_group_association_table',
@@ -143,13 +184,25 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('user_id', 'group_id')
     )
+    op.create_table('attendances',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('status', sa.Enum('ATTENTED', 'ABSENT', name='attendancestatus'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('student_id', sa.Integer(), nullable=False),
+    sa.Column('lesson_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['lesson_id'], ['lessons.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['student_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('homeworks',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('description', sa.Text(), nullable=False),
-    sa.Column('deadline', sa.Date(), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('deadline', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('file_path', sa.String(), nullable=True),
     sa.Column('lesson_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['lesson_id'], ['lessons.id'], ),
+    sa.ForeignKeyConstraint(['lesson_id'], ['lessons.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('homework_submissions',
@@ -158,8 +211,8 @@ def upgrade() -> None:
     sa.Column('student_id', sa.Integer(), nullable=False),
     sa.Column('file_path', sa.String(), nullable=True),
     sa.Column('content', sa.String(), nullable=True),
-    sa.Column('submitted_at', sa.Date(), nullable=False),
-    sa.ForeignKeyConstraint(['homework_id'], ['homeworks.id'], ),
+    sa.Column('submitted_at', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['homework_id'], ['homeworks.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['student_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -167,9 +220,9 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('submission_id', sa.Integer(), nullable=False),
     sa.Column('teacher_id', sa.Integer(), nullable=False),
-    sa.Column('comment', sa.Text(), nullable=True),
-    sa.Column('reviewed_at', sa.Date(), nullable=False),
-    sa.ForeignKeyConstraint(['submission_id'], ['homework_submissions.id'], ),
+    sa.Column('comment', sa.Text(), nullable=False),
+    sa.Column('reviewed_at', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['submission_id'], ['homework_submissions.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['teacher_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -182,8 +235,11 @@ def downgrade() -> None:
     op.drop_table('homework_reviews')
     op.drop_table('homework_submissions')
     op.drop_table('homeworks')
+    op.drop_table('attendances')
     op.drop_table('student_group_association_table')
     op.drop_table('payments')
+    op.drop_table('payment_detail')
+    op.drop_table('payment_check')
     op.drop_table('lessons')
     op.drop_table('subscriptions')
     op.drop_table('groups')
@@ -191,6 +247,7 @@ def downgrade() -> None:
     op.drop_table('courses')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
+    op.drop_table('payment_requisites')
     op.drop_table('levels')
     op.drop_table('languages')
     op.drop_table('classrooms')
