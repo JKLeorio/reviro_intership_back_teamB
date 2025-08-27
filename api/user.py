@@ -35,6 +35,7 @@ from schemas.pagination import Pagination
 from schemas.user import (
     StudentProfile,
     TeacherFullNameResponse,
+    TeacherFullNameUpdate,
     TeacherProfile,
     TeacherWithCourseResponse,
     TeachersWithCourseAndPagination,
@@ -391,7 +392,7 @@ async def student_partial_update(
 )
 async def teacher_partial_update(
     teacher_id: int,
-    teacher_data: UserFullNameUpdate,
+    teacher_data: TeacherFullNameUpdate,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
     user_manager: UserManager = Depends(get_user_manager)
