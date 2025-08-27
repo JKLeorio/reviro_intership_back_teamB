@@ -146,3 +146,23 @@ async def test_student_update(
     }
     response = await client.patch(f"/user/student/{user.id}", json=json)
     assert response.status_code == status.HTTP_200_OK
+
+
+
+@pytest.mark.anyio
+async def test_student_detail(
+    client,
+    modern_user_factory
+):
+    student = await modern_user_factory(role=Role.STUDENT)
+    response = await client.get(f"/user/student/{student.id}")
+    response.status_code == status.HTTP_200_OK
+
+@pytest.mark.anyio
+async def test_teacher_detail(
+    client,
+    modern_user_factory
+):
+    teacher = await modern_user_factory(role=Role.TEACHER)
+    response = await client.get(f"/user/teacher/{teacher.id}")
+    response.status_code == status.HTTP_200_OK
