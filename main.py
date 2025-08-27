@@ -54,9 +54,12 @@ async def lifespan(app: FastAPI):
     finally:
         scheduler.shutdown()
         logging.info("Scheduler stopped")
-        if getattr(app.state, "smtp_client", None):
-            await app.state.smtp_client.quit()
-        logging.info("SMTP stopped")
+        if getattr(app.state, "smtp_client", None) is not None:
+            try:
+                await app.state.smtp_client.quit()
+                logging.info("SMTP stopped")
+            except Exception as e:
+                logging.warning(f"Error closing SMTP client: {e}")
 
 app = FastAPI(lifespan=lifespan)
 

@@ -1,4 +1,5 @@
 import contextlib
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi_users import FastAPIUsers, fastapi_users
 from pydantic import BaseModel
@@ -6,16 +7,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.permissions import require_roles
+from db.types import OTP_purpose
 from models.group import Group
-from models.user import User
+from models.user import OTP, User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherCreate, TeacherRegister, TeacherWithGroupResponse, UserResponse, AdminRegister
+from schemas.user import AdminCreate, PersonalDataUpdate, SendOtp, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherRegister, TeacherWithGroupResponse, UserResponse, AdminRegister
 from schemas.group import GroupShort, StudentWithGroupResponse
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from typing import Annotated, Any, List, Optional
 from decouple import config
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
+from utils.date_time_utils import get_current_time
 from utils.password_utils import generate_password
+from utils.security import generate_otp6, hash_code
 
 SECRET = config('SECRET')
 
@@ -99,6 +103,25 @@ for route in auth_router_full.routes:
 #     return user
 
 
+
+async def create_user(
+    session: AsyncSession,
+    user_manager: UserManager,
+    user_data: BaseModel, 
+    schema_cls: BaseModel
+) -> list[User, str]:
+    if await session.scalar(select(User).where(
+        User.email == user_data.email or User.phone_number == user_data.phone_number)
+        ):
+        raise HTTPException(status_code=400, detail="Email or phone already registered")
+    password = generate_password()
+    user_data_dump = user_data.model_dump()
+    user_data_dump['password'] = password
+    
+    new_user = await user_manager.create(schema_cls(**user_data_dump))
+    return [new_user, password]
+
+
 @authRouter.post("/register-admin",
                 response_model=UserResponse, 
                 status_code=status.HTTP_201_CREATED
@@ -113,16 +136,15 @@ async def register_admin(
     Register new admin, only for superadmin
     NOTE -> The email field when creating a user is used as the username when logging in.
     """
-    if await session.scalar(select(User).where(
-        User.email == user_data.email or User.phone_number == user_data.phone_number)):
-        raise HTTPException(status_code=400, detail="Email or phone already registered")
-    password = generate_password()
-    user_data_dump = user_data.model_dump()
-    user_data_dump['password'] = password
+
+    new_user, password = await create_user(
+        session=session,
+        user_manager=user_manager,
+        user_data=user_data,
+        schema_cls=AdminCreate
+        )
     
-    user = await user_manager.create(AdminCreate(**user_data_dump))
-    
-    response = UserResponse.model_validate(user)
+    response = UserResponse.model_validate(new_user)
     response.password = password
     return response
 
@@ -140,15 +162,15 @@ async def register_user(
     Register new user, only for admin
     NOTE -> The email field when creating a user is used as the username when logging in.
     """
-    if await session.scalar(select(User).where(
-        User.email == user_data.email or User.phone_number == user_data.phone_number)):
-        raise HTTPException(status_code=400, detail="Email or phone already registered")
-    password = generate_password()
-    user_data_dump = user_data.model_dump()
-    user_data_dump['password'] = password
-    user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
 
-    response = UserResponse.model_validate(user)
+    new_user, password = await create_user(
+        session=session,
+        user_manager=user_manager,
+        user_data=user_data,
+        schema_cls=StudentTeacherCreate
+        )
+
+    response = UserResponse.model_validate(new_user)
     response.password = password
     return response
 
@@ -173,14 +195,14 @@ async def register_user_with_group(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='group not found'
             )
-    if await session.scalar(select(User).where(User.email == user_data.email)):
-        raise HTTPException(status_code=400, detail="Email already registered")
-    password = generate_password()
-    user_data_dump = user_data.model_dump()
-    user_data_dump['password'] = password
-    new_user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
-
-    new_user = await session.merge(new_user)
+    
+    new_user, password = await create_user(
+        session=session,
+        user_manager=user_manager,
+        user_data=user_data,
+        schema_cls=AdminCreate
+        )
+    
     await session.refresh(new_user)
     await session.refresh(group, attribute_names=['students'])
 
@@ -220,13 +242,13 @@ async def register_student_with_group(
     if len(group_ids) != len(groups):
         raise HTTPException(status_code=404, detail='group not found')
     
-    if await session.scalar(select(User).where(User.email == user_data.email)):
-        raise HTTPException(status_code=400, detail="Email already registered")
+    new_user, password = await create_user(
+        session=session,
+        user_manager=user_manager,
+        user_data=user_data,
+        schema_cls=AdminCreate
+        )
     
-    password = generate_password()
-    user_data_dump = user_data.model_dump()
-    user_data_dump['password'] = password
-    new_user = await user_manager.create(StudentTeacherCreate(**user_data_dump))
     new_user = await session.merge(new_user)
 
     groups = (await session.execute(
@@ -283,12 +305,13 @@ async def register_teacher_with_group(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='group not found'
             )
-    if await session.scalar(select(User).where(User.email == user_data.email)):
-        raise HTTPException(status_code=400, detail="Email already registered")
-    password = generate_password()
-    user_data_dump = user_data.model_dump()
-    user_data_dump['password'] = password
-    new_user = await user_manager.create(TeacherCreate(**user_data_dump))
+    
+    new_user, password = await create_user(
+        session=session,
+        user_manager=user_manager,
+        user_data=user_data,
+        schema_cls=AdminCreate
+        )
 
     new_user = await session.merge(new_user)
     await session.refresh(new_user)
@@ -309,3 +332,108 @@ async def register_teacher_with_group(
         group_id=group_id,
         description=new_user.description
     )
+
+
+
+
+async def generate_otp(
+    user: User,
+    purpose: OTP_purpose,
+    session: AsyncSession
+) -> str:
+    
+    otp_lifetime = timedelta(minutes=2)
+
+    now = get_current_time()
+    stmt = (
+        select(OTP)
+        .where(
+            OTP.user_id == user.id,
+            OTP.purpose == purpose,
+            OTP.is_active.is_(True)
+        )
+        .with_for_update(skip_locked=True)
+    )
+    res = await session.execute(stmt)
+    existing: OTP = res.scalar_one_or_none()
+
+    if existing is not None:
+        if existing.last_sent_at and existing.last_sent_at + timedelta(seconds=5) > now:
+            raise ValueError("too frequent requests, try later")
+        
+        existing.is_active = False
+        await session.flush()
+    
+    code = generate_otp6()
+    hashed_code = hash_code(code=code)
+    record = OTP(
+        expires_at = now + otp_lifetime,
+        consumed_at = None,
+        purpose = purpose,
+        code_hash = hashed_code,
+        user_id = user.id,
+        last_sent_at = now,
+    )
+    session.add(record)
+    await session.commit()
+    return code
+
+
+async def verify_otp(
+    session: AsyncSession,
+    user: User,
+    purpose: OTP_purpose,
+    code: str
+) -> bool:
+    now = get_current_time()
+
+    stmt = (
+        select(OTP)
+        .where(
+            OTP.user_id == user.id,
+            OTP.purpose == purpose,
+            OTP.is_active.is_(True)
+        )
+        .with_for_update(skip_locked=True)
+    )
+    result = await session.execute(stmt)
+    otp: OTP = result.scalar_one_or_none()
+
+    if otp is None:
+        return False
+    
+    if otp.expires_at <= now:
+        otp.active = False
+        await session.commit()
+        return False
+    
+    if otp.attemps_left <= 0:
+        otp.is_active = False
+        await session.commit()
+        return False
+
+@authRouter.post(
+    '/send-otp',
+    response_model=None,
+    status_code=status.HTTP_201_CREATED
+)
+async def send_otp(
+    SendOtp: SendOtp,
+    user: User = Depends(current_student_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    pass
+
+
+
+@authRouter.post(
+    '/personal-data-update',
+    response_model=None,
+    status_code=status.HTTP_201_CREATED
+)
+async def profile_update(
+    SendOtp: PersonalDataUpdate,
+    user: User = Depends(current_student_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    pass
