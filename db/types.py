@@ -86,3 +86,9 @@ class HttpUrlType(TypeDecorator):
 class AttendanceStatus(str, Enum):
     ATTENTED = 'attended'
     ABSENT = 'absent'
+
+
+class OTP_purpose(str, Enum):
+    RESET_EMAIL = "reset_email"
+    RESET_PASSWORD = "reset_password"
+    UPDATE_PESONAL_DATA = "update_personal_data"

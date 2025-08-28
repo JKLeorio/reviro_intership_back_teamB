@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import List
-from sqlalchemy import Column, String, DateTime, ForeignKey, Table, Enum, Text
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Table, Enum, Text, Index, UniqueConstraint, text
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from fastapi_users.db import SQLAlchemyBaseUserTable
 
 from utils.date_time_utils import get_current_time
 from db.dbbase import Base
-from db.types import Role
+from db.types import OTP_purpose, Role
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -62,3 +62,41 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+    
+
+
+class OTP(Base):
+    __tablename__ = "otps"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=get_current_time
+        )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True)
+    )
+    consumed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    purpose: Mapped[OTP_purpose] = mapped_column(Enum(OTP_purpose), default=OTP_purpose.UPDATE_PESONAL_DATA)
+    code_hash: Mapped[str] = mapped_column(String(255))
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
+
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    attemps_left: Mapped[int] = mapped_column(Integer, default=5)
+
+    
+    __table_args__ = (
+        Index(
+            "uq_otp_user_purpose_active_true",
+            "user_id", "purpose",
+            unique=True,
+            postgresql_where=text("is_active = true")
+        ),
+        Index("ix_otp_expires", "expires_at"),
+    )
+
+
+

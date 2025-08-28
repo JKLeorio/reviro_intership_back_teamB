@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_filter.contrib.sqlalchemy import Filter
 from fastapi_filter.base.filter import FilterDepends
 
-from fastapi_users.exceptions import UserNotExists
+from fastapi_users.exceptions import UserNotExists, UserInactive
 
 from db.database import get_async_session
 from api.auth import (
@@ -46,6 +46,9 @@ from schemas.user import (
     UserResponse,
     UserUpdate
 )
+from conf import DEBUG
+from utils.password_utils import generate_password
+
 
 user_router = routing.APIRouter()
 
@@ -65,8 +68,10 @@ async def is_phone_exist(phone_number: str, session: AsyncSession) -> None:
         )
     
 async def validate_user_unique(email: str, phone_number: str, session) -> None:
-    await is_email_exist(email, session)
-    await is_phone_exist(phone_number, session)
+    if email is not None:
+        await is_email_exist(email, session)
+    if phone_number is not None:
+        await is_phone_exist(phone_number, session)
 
 
 class UserFilter(Filter):
@@ -380,7 +385,11 @@ async def student_partial_update(
         session=session
         )
     student_data = UserPartialUpdate(**student_data.model_dump(exclude_none=True))
-    updated_user = await user_manager.update(student_data, user_to_update)
+    updated_user = await user_manager.update(
+        student_data, 
+        user_to_update, 
+        request={'old_email': user_to_update.email}
+        )
     return UserFullnameResponse.model_validate(updated_user)
 
 
@@ -420,7 +429,11 @@ async def teacher_partial_update(
         session=session
         )
     teacher_data = UserPartialUpdate(**teacher_data.model_dump(exclude_none=True))
-    updated_user = await user_manager.update(teacher_data, user_to_update)
+    updated_user = await user_manager.update(
+        teacher_data, 
+        user_to_update, 
+        request={'old_email': user_to_update.email}
+        )
     return TeacherFullNameResponse.model_validate(updated_user)
 
     
@@ -480,7 +493,11 @@ async def user_update(
         phone_number=user_update.phone_number,
         session=session
         )
-    updated_user = await user_manager.update(user_update=user_update, user=old_user)
+    updated_user = await user_manager.update(
+        user_update=user_update, 
+        user=old_user,
+        request={'old_email': old_user.email}
+        )
     return updated_user
 
 @user_router.patch(
@@ -511,7 +528,11 @@ async def user_partial_update(
         session=session
         )
     teacher_data = UserPartialUpdate(teacher_data.model_dump(exclude_none=True))
-    updated_user = await user_manager.update(user_update=user_update, user=old_user)
+    updated_user = await user_manager.update(
+        user_update=user_update, 
+        user=old_user,
+        request={'old_email': old_user.email}
+        )
     return updated_user
 
 
@@ -650,3 +671,33 @@ async def get_teacher_detail_profile_data(
         courses=courses
     )
     return response
+
+@user_router.get(
+    '/{user_id}/reset-password',
+    status_code=status.HTTP_200_OK
+)
+async def reset_user_password(
+    user_id: int,
+    user_manager: UserManager = Depends(get_user_manager),
+    user: User = Depends(current_admin_user)
+):
+    password = generate_password()
+    try:
+        user_to_reset = await user_manager.get(user_id)
+    except UserNotExists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='user not found')
+    if user_to_reset.role not in [Role.STUDENT, Role.TEACHER]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail='you can reset only teachers and students password'
+            )
+    try:
+        # await user_manager.forgot_password(user_to_reset)
+        await user_manager.forgot_password(user_to_reset, request={'password': password})
+    except UserInactive:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='user not active')
+    
+    if DEBUG:
+        return {'password' : password}
+    
+    return

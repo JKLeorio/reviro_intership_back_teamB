@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "aiofiles>=24.1.0",
+    "aiosmtplib>=4.0.1",
     "alembic>=1.16.1",
     "anyio>=4.9.0",
     "apscheduler>=3.11.0",
