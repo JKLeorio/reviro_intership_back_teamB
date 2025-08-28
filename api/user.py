@@ -686,6 +686,11 @@ async def reset_user_password(
         user_to_reset = await user_manager.get(user_id)
     except UserNotExists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='user not found')
+    if user_to_reset.role not in [Role.STUDENT, Role.TEACHER]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail='you can reset only teachers and students password'
+            )
     try:
         # await user_manager.forgot_password(user_to_reset)
         await user_manager.forgot_password(user_to_reset, request={'password': password})
