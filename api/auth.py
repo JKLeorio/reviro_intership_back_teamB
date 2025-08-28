@@ -12,7 +12,7 @@ from db.types import OTP_purpose
 from models.group import Group
 from models.user import OTP, User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, PersonalDataUpdate, SendOtp, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherFullNameResponse, TeacherRegister, TeacherWithGroupResponse, UserFullnameResponse, UserPartialUpdate, UserResponse, AdminRegister
+from schemas.user import AdminCreate, PersonalDataUpdate, SendOtp, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherCreate, TeacherFullNameResponse, TeacherRegister, TeacherWithGroupResponse, UserFullnameResponse, UserPartialUpdate, UserResponse, AdminRegister
 from schemas.group import GroupShort, StudentWithGroupResponse
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from typing import Annotated, Any, List, Optional
@@ -217,44 +217,44 @@ async def register_user(
 
 
 
-async def register_user_with_group(
-        group_id: int, 
-        session: AsyncSession,
-        user_manager: UserManager,
-        user_data: BaseModel,
-        ):
-    group = await session.get(
-        Group, 
-        group_id, 
-        options=[
-            selectinload(Group.students)
-            ]
-        )
-    if group is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail='group not found'
-            )
+# async def register_user_with_group(
+#         group_id: int, 
+#         session: AsyncSession,
+#         user_manager: UserManager,
+#         user_data: BaseModel,
+#         ):
+#     group = await session.get(
+#         Group, 
+#         group_id, 
+#         options=[
+#             selectinload(Group.students)
+#             ]
+#         )
+#     if group is None:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail='group not found'
+#             )
     
-    new_user, password = await create_user(
-        session=session,
-        user_manager=user_manager,
-        user_data=user_data,
-        schema_cls=AdminCreate
-        )
+#     new_user, password = await create_user(
+#         session=session,
+#         user_manager=user_manager,
+#         user_data=user_data,
+#         schema_cls=StudentTeacherCreate
+#         )
     
-    await session.refresh(new_user)
-    await session.refresh(group, attribute_names=['students'])
+#     await session.refresh(new_user)
+#     await session.refresh(group, attribute_names=['students'])
 
-    # if new_user not in (await group.awaitable_attrs.students):
-    if new_user not in group.students:
-        group.students.append(new_user)
-    await session.commit()
-    await session.refresh(new_user)
-    return {
-        'user' : new_user,
-        'group' : group
-    }
+#     # if new_user not in (await group.awaitable_attrs.students):
+#     if new_user not in group.students:
+#         group.students.append(new_user)
+#     await session.commit()
+#     await session.refresh(new_user)
+#     return {
+#         'user' : new_user,
+#         'group' : group
+#     }
 
 
 @authRouter.post(
@@ -286,7 +286,7 @@ async def register_student_with_group(
         session=session,
         user_manager=user_manager,
         user_data=user_data,
-        schema_cls=AdminCreate
+        schema_cls=StudentTeacherCreate
         )
     
     new_user = await session.merge(new_user)
@@ -350,7 +350,7 @@ async def register_teacher_with_group(
         session=session,
         user_manager=user_manager,
         user_data=user_data,
-        schema_cls=AdminCreate
+        schema_cls=TeacherCreate
         )
 
     new_user = await session.merge(new_user)
