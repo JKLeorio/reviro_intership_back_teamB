@@ -67,10 +67,10 @@ async def is_phone_exist(phone_number: str, session: AsyncSession) -> None:
             detail='user with this email is already exists'
         )
     
-async def validate_user_unique(email: str, phone_number: str, session) -> None:
-    if email is not None:
+async def validate_user_unique(email: str, phone_number: str, session, user: User) -> None:
+    if (email is not None) and (user.email != email):
         await is_email_exist(email, session)
-    if phone_number is not None:
+    if (phone_number is not None) and (user.phone_number != phone_number):
         await is_phone_exist(phone_number, session)
 
 
@@ -382,7 +382,8 @@ async def student_partial_update(
     await validate_user_unique(
         email=student_data.email,
         phone_number=student_data.phone_number,
-        session=session
+        session=session,
+        user=user_to_update
         )
     student_data = UserPartialUpdate(**student_data.model_dump(exclude_none=True))
     updated_user = await user_manager.update(
@@ -426,7 +427,8 @@ async def teacher_partial_update(
     await validate_user_unique(
         email=teacher_data.email,
         phone_number=teacher_data.phone_number,
-        session=session
+        session=session,
+        user=user_to_update
         )
     teacher_data = UserPartialUpdate(**teacher_data.model_dump(exclude_none=True))
     updated_user = await user_manager.update(
@@ -491,7 +493,8 @@ async def user_update(
     await validate_user_unique(
         email=user_update.email,
         phone_number=user_update.phone_number,
-        session=session
+        session=session,
+        user=old_user
         )
     updated_user = await user_manager.update(
         user_update=user_update, 
@@ -525,7 +528,8 @@ async def user_partial_update(
     await validate_user_unique(
         email=user_update.email,
         phone_number=user_update.phone_number,
-        session=session
+        session=session,
+        user=old_user
         )
     teacher_data = UserPartialUpdate(teacher_data.model_dump(exclude_none=True))
     updated_user = await user_manager.update(
