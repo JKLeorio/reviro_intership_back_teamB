@@ -1,5 +1,6 @@
 import contextlib
 from datetime import timedelta
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi_users import FastAPIUsers, fastapi_users
 from pydantic import BaseModel
@@ -11,7 +12,7 @@ from db.types import OTP_purpose
 from models.group import Group
 from models.user import OTP, User
 from db.database import get_user_db, get_async_session
-from schemas.user import AdminCreate, PersonalDataUpdate, SendOtp, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherRegister, TeacherWithGroupResponse, UserResponse, AdminRegister
+from schemas.user import AdminCreate, PersonalDataUpdate, SendOtp, StudentRegister, StudentTeacherCreate, StudentTeacherRegister, TeacherFullNameResponse, TeacherRegister, TeacherWithGroupResponse, UserFullnameResponse, UserPartialUpdate, UserResponse, AdminRegister
 from schemas.group import GroupShort, StudentWithGroupResponse
 from fastapi_users.manager import BaseUserManager, IntegerIDMixin
 from typing import Annotated, Any, List, Optional
@@ -19,7 +20,9 @@ from decouple import config
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from utils.date_time_utils import get_current_time
 from utils.password_utils import generate_password
-from utils.security import generate_otp6, hash_code
+from utils.security import generate_otp6, hash_code, verify_code_hash
+from utils.smtp_client import send_email
+from conf import DEBUG
 
 SECRET = config('SECRET')
 
@@ -40,18 +43,53 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     verification_token_secret = SECRET
 
     async def on_after_register(self, user: User,
-                                request: Optional[Request] = None):
-        print(f"User {user.id} has registered.")
+                                request: Optional[dict] = None):
+        logging.info(f"User {user.email} has registered.")
+        if request is not None:
+            await send_email(
+                To_email=user.email,
+                Subject='You have been registered in eureka',
+                Content="Hello, you have been registered in eureka." \
+                f"\nBelow your login and password "\
+                f"\nlogin : {user.email}"\
+                f"\npassword : {request['password']}"
+            )
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
     ):
-        print(f"User {user.id} has forgot their password. Reset token: {token}")
+        # new_password = generate_password()
+        # await self.reset_password(
+        #     token=token, 
+        #     password=new_password
+        # )
+        await self.reset_password(
+            token=token, 
+            password=request['password']
+            )
+        logging.info(f"User {user.email} password has reset")
+        await send_email(
+            To_email=user.email,
+            Subject='Password_reset',
+            Content="Hello, your password from eureka was reset " \
+            f"\nHere your new password : {request['password']}"\
+            f"\nfor login : {user.email}"
+        )
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Optional[Request] = None
     ):
         print(f"Verification requested for user {user.id}. Verification token: {token}")
+    
+    async def on_after_update(self, user, update_dict, request = None):
+        if (update_dict.get('email', None) is not None) and (request is not None):
+            logging.info(f"User {request['old_email']} email has changed into {update_dict['email']}")
+            await send_email(
+            To_email=user.email,
+            Subject='Email changed',
+            Content="Hello, your email was changed " \
+            f"\nFrom {request['old_email']} into {update_dict['email']}"
+        )
 
 
 async def get_user_manager(user_db=Depends(get_user_db)):
@@ -118,7 +156,9 @@ async def create_user(
     user_data_dump = user_data.model_dump()
     user_data_dump['password'] = password
     
-    new_user = await user_manager.create(schema_cls(**user_data_dump))
+    new_user = await user_manager.create(schema_cls(**user_data_dump), request={
+        'password': password
+    })
     return [new_user, password]
 
 
@@ -342,7 +382,7 @@ async def generate_otp(
     session: AsyncSession
 ) -> str:
     
-    otp_lifetime = timedelta(minutes=2)
+    otp_lifetime = timedelta(minutes=5)
 
     now = get_current_time()
     stmt = (
@@ -373,6 +413,7 @@ async def generate_otp(
         code_hash = hashed_code,
         user_id = user.id,
         last_sent_at = now,
+        is_active = True,
     )
     session.add(record)
     await session.commit()
@@ -392,7 +433,7 @@ async def verify_otp(
         .where(
             OTP.user_id == user.id,
             OTP.purpose == purpose,
-            OTP.is_active.is_(True)
+            OTP.is_active == True
         )
         .with_for_update(skip_locked=True)
     )
@@ -411,6 +452,20 @@ async def verify_otp(
         otp.is_active = False
         await session.commit()
         return False
+    
+    status = verify_code_hash(code=code, code_hash=otp.code_hash)
+    otp.attemps_left -= 1
+
+    if status:
+        otp.consumed_at = now
+        otp.is_active = False
+        await session.commit()
+        return True
+    else:
+        if otp.attemps_left <= 0:
+            otp.is_active = False
+        await session.commit()
+        return False
 
 @authRouter.post(
     '/send-otp',
@@ -422,18 +477,38 @@ async def send_otp(
     user: User = Depends(current_student_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    pass
+    code = await generate_otp(user, SendOtp.purpose, session)
+    await send_email(
+        user.email,
+        SendOtp.purpose,
+        f"Your code {code}"
+    )
+    if DEBUG:
+        return {'otp' : code}
+    return
 
 
 
 @authRouter.post(
     '/personal-data-update',
-    response_model=None,
+    response_model=TeacherFullNameResponse,
     status_code=status.HTTP_201_CREATED
 )
 async def profile_update(
-    SendOtp: PersonalDataUpdate,
+    personal_data_with_opt6: PersonalDataUpdate,
     user: User = Depends(current_student_user),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    user_manager: UserManager = Depends(get_user_manager)
 ):
-    pass
+    if not (
+        await verify_otp(
+        session=session,
+        user=user,
+        purpose=OTP_purpose.UPDATE_PESONAL_DATA,
+        code=personal_data_with_opt6.otp6
+        )
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail='otp is invalid')
+    updated_user = await user_manager.update(user=user, user_update=personal_data_with_opt6)
+    return TeacherFullNameResponse.model_validate(updated_user, from_attributes=True)
+    

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Table, Enum, Text, Index, UniqueConstraint
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Table, Enum, Text, Index, UniqueConstraint, text
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from fastapi_users.db import SQLAlchemyBaseUserTable
 
@@ -87,10 +87,15 @@ class OTP(Base):
 
     attemps_left: Mapped[int] = mapped_column(Integer, default=5)
 
+    
     __table_args__ = (
-        Index("ix_otp_identifier_purpose_active", "identifier", "purpose", "active"),
+        Index(
+            "uq_otp_user_purpose_active_true",
+            "user_id", "purpose",
+            unique=True,
+            postgresql_where=text("is_active = true")
+        ),
         Index("ix_otp_expires", "expires_at"),
-        UniqueConstraint("identifier", "purpose", "active", name="uq_otp_identifier_purpose_active"),
     )
 
 

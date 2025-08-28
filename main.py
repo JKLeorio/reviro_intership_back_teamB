@@ -48,18 +48,18 @@ async def lifespan(app: FastAPI):
         scheduler.add_job(update_and_check_payments, trigger)
         scheduler.start()
         logging.info("Scheduler started")
-        app.state.smtp_client = await init_smtp()
-        logging.info("SMTP started")
+        # app.state.smtp_client = await init_smtp()
+        # logging.info("SMTP started")
         yield
     finally:
         scheduler.shutdown()
         logging.info("Scheduler stopped")
-        if getattr(app.state, "smtp_client", None) is not None:
-            try:
-                await app.state.smtp_client.quit()
-                logging.info("SMTP stopped")
-            except Exception as e:
-                logging.warning(f"Error closing SMTP client: {e}")
+        # if getattr(app.state, "smtp_client", None) is not None:
+        #     try:
+        #         await app.state.smtp_client.quit()
+        #         logging.info("SMTP stopped")
+        #     except Exception as e:
+        #         logging.warning(f"Error closing SMTP client: {e}")
 
 app = FastAPI(lifespan=lifespan)
 

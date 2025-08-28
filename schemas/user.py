@@ -202,11 +202,11 @@ class TeachersWithCourseAndPagination(BaseModel):
 
 
 class SendOtp(BaseModel):
-    purpose: OTP_purpose
+    purpose: OTP_purpose = OTP_purpose.UPDATE_PESONAL_DATA
 
 
-class PersonalDataUpdate(BaseModel):
-    first_name: str
-    last_name: str
-    phone_number: str
-    otp6: str
+class PersonalDataUpdate(schemas.CreateUpdateDictModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    otp6: Optional[str] = None
