@@ -4,7 +4,7 @@ from typing import Dict, List, Literal, Optional, TYPE_CHECKING
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, PrivateAttr, field_validator, model_validator
 from fastapi_users import schemas
 
-from db.types import PaymentDetailStatus, Role
+from db.types import OTP_purpose, PaymentDetailStatus, Role
 from schemas.course import CourseShortResponse, ProfileCourse
 from schemas.pagination import Pagination
 
@@ -201,3 +201,14 @@ class TeacherWithCourseResponse(TeacherFullNameResponse):
 class TeachersWithCourseAndPagination(BaseModel):
     teachers : list[TeacherWithCourseResponse]
     pagination: Pagination
+
+
+class SendOtp(BaseModel):
+    purpose: OTP_purpose = OTP_purpose.UPDATE_PESONAL_DATA
+
+
+class PersonalDataUpdate(schemas.CreateUpdateDictModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    otp6: Optional[str] = None
