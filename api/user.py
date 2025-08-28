@@ -35,6 +35,7 @@ from schemas.pagination import Pagination
 from schemas.user import (
     StudentProfile,
     TeacherFullNameResponse,
+    TeacherFullNameUpdate,
     TeacherProfile,
     TeacherWithCourseResponse,
     TeachersWithCourseAndPagination,
@@ -67,8 +68,10 @@ async def is_phone_exist(phone_number: str, session: AsyncSession) -> None:
         )
     
 async def validate_user_unique(email: str, phone_number: str, session) -> None:
-    await is_email_exist(email, session)
-    await is_phone_exist(phone_number, session)
+    if email is not None:
+        await is_email_exist(email, session)
+    if phone_number is not None:
+        await is_phone_exist(phone_number, session)
 
 
 class UserFilter(Filter):
@@ -398,7 +401,7 @@ async def student_partial_update(
 )
 async def teacher_partial_update(
     teacher_id: int,
-    teacher_data: UserFullNameUpdate,
+    teacher_data: TeacherFullNameUpdate,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
     user_manager: UserManager = Depends(get_user_manager)

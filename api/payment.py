@@ -1052,22 +1052,29 @@ async def stripe_webhook(
 
 
 @stripe_router.get("/payments/")
-
 async def get_stripe_payments(
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user)
+        user_id: Optional[int] = Query(None, description="Filter by user ID (admin only)"),
+        session: AsyncSession = Depends(get_async_session),
+        user: User = Depends(current_user)
 ):
+    query = select(Payment).where(Payment.payment_method == PaymentMethod.stripe)
 
-    result = await session.execute(
-        select(Payment)
+    if user.role == "student":
+        query = query.where(Payment.owner_id == user.id)
 
-        .where(Payment.payment_method == PaymentMethod.stripe)
-        .options(
-            selectinload(Payment.group),
+    elif user.role == "admin" and user_id is not None:
+        query = query.where(Payment.owner_id == user_id)
 
-            selectinload(Payment.owner)
+    elif user.role not in ["admin", "student"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have enough permissions"
         )
-        .order_by(Payment.created_at.desc())
-    )
 
+    query = query.options(
+        selectinload(Payment.group),
+        selectinload(Payment.owner)
+    ).order_by(Payment.created_at.desc())
+
+    result = await session.execute(query)
     return result.scalars().all()

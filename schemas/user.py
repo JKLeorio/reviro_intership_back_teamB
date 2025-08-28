@@ -177,6 +177,8 @@ class UserFullNameUpdate(UserFullNameRegister):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone_number: Optional[str] = None
+
+class TeacherFullNameUpdate(UserFullNameUpdate):
     description: Optional[str] = None
 
 class StudentRegister(UserFullNameRegister):
