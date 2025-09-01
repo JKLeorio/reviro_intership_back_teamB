@@ -34,8 +34,8 @@ class GroupResponse(BaseModel):
     # временно
     course_id: int
     # course: CourseRead
-    teacher: TeacherResponse
-    teacher_id: int
+    teacher: Optional[TeacherResponse] = None
+    teacher_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -48,6 +48,7 @@ class ProfileGroup(BaseModel):
     approximate_lesson_start: time
     is_active: bool
     student_count: int
+
 
 class GroupProfileResponse(BaseModel):
     groups: list[ProfileGroup]
