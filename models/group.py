@@ -36,7 +36,7 @@ class Group(Base):
     course_id: Mapped[int] = mapped_column(ForeignKey('courses.id', ondelete="CASCADE"))
     course: Mapped['Course'] = relationship(back_populates="groups")
 
-    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     teacher: Mapped["User"] = relationship(back_populates="groups_taught")
 
     lessons: Mapped[List["Lesson"]] = relationship(back_populates="group", cascade="all, delete-orphan")
