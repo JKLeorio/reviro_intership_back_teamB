@@ -251,7 +251,7 @@ async def update_lesson(lesson_data: LessonUpdate, lesson_id: int,
     if not lesson:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson doesn't exist")
 
-    if lesson.teacher_id != user.id:
+    if (user.role == Role.TEACHER) and (lesson.teacher_id != user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed")
 
     relates = {}
