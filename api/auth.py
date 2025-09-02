@@ -269,6 +269,7 @@ async def register_student_with_group(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    from api.payment import create_initial_payment
     group_ids = set(group_id)
     stmt = (
         select(Group)
@@ -300,6 +301,7 @@ async def register_student_with_group(
         ).scalars().all()
     for group in groups:
         group.students.append(new_user)
+        await create_initial_payment(new_user.id, group.id, db=session)
 
     await session.commit()
     await session.refresh(new_user, attribute_names=['groups_joined'])

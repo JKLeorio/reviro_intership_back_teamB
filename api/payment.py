@@ -470,7 +470,15 @@ async def payment_delete(
 async def create_initial_payment(
     student_id: int, group_id: int, db: AsyncSession
 ):
-    group = await db.get(Group, group_id, options=[selectinload(Group.course)])
+    # selectinload не работает почему то
+    # group = await db.get(Group, group_id, options=[selectinload(Group.course)])
+
+    group = (await db.execute(
+        select(Group)
+        .options(selectinload(Group.course))
+        .where(Group.id == group_id)
+    )).scalar_one_or_none()
+
     exists = await db.execute(
         select(PaymentDetail).where(
             PaymentDetail.student_id == student_id,
@@ -492,7 +500,7 @@ async def create_initial_payment(
         status=PaymentDetailStatus.PAID,
     )
     db.add(payment)
-    await db.commit()
+    await db.flush()
     await db.refresh(payment)
     return payment
 

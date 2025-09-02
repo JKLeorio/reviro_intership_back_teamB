@@ -61,7 +61,7 @@ class PaymentDetail(Base):
     __tablename__ = 'payment_detail'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
-    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"))
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"), nullable=True)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     joined_at: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     current_month_number: Mapped[int] = mapped_column(Integer, default=1)
