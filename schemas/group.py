@@ -17,7 +17,7 @@ class GroupBase(BaseModel):
     is_active: bool
     is_archived: bool
     course_id: int
-    teacher_id: int
+    teacher_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

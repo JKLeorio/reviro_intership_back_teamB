@@ -18,7 +18,7 @@ DB_PORT = config('POSTGRES_PORT', default='5432')
 DB_NAME = config('POSTGRES_DB')
 DATABASE_URL = f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL, echo=False)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
