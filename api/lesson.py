@@ -569,6 +569,9 @@ async def get_my_homework_submission(homework_id: int, db: AsyncSession = Depend
         .options(selectinload(HomeworkSubmission.review))
     )
     submission = result.scalar_one_or_none()
+    if submission is None:
+        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='submission not found')
+        return {}
     return submission
 
 
