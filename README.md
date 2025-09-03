@@ -45,6 +45,31 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 uv sync
 ```
 
+#### Set up minio
+
+##### MacOS
+
+```bash
+curl -L -o minio https://dl.min.io/server/minio/release/darwin-arm64/minio
+
+chmod +x minio
+
+mkdir -p minio-data
+
+./minio server minio-data --address ":9000" --console-address ":9001"
+```
+
+##### Windows
+
+```bash
+curl https://dl.min.io/server/minio/release/windows-amd64/minio.exe -o minio.exe
+
+mkdir minio-data
+
+.\minio.exe server minio-data --address ":9000" --console-address ":9001"
+```
+
+
 #### Run tests
 
 ```bash
