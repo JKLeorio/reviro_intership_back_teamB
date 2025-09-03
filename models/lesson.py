@@ -147,7 +147,7 @@ class Attendance(Base):
         )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
     updated_at = mapped_column(DateTime(timezone=True), default=get_current_time, onupdate=get_current_time)
-    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'), nullable=True)
     lesson_id: Mapped[int] = mapped_column(ForeignKey("lessons.id", ondelete='CASCADE'))
     student: Mapped["User"] = relationship(
         "User", 
