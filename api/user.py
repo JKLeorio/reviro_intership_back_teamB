@@ -449,7 +449,7 @@ async def teacher_partial_update(
 async def user_detail(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user)
+    user: User = Depends(current_teacher_user)
 ):
     '''
     Return user detail data by user id, admin only
