@@ -13,7 +13,7 @@ from admin.group import GroupAdmin
 from admin.lesson import AttendanecAdmin, ClassroomAdmin
 from db.database import get_async_session, engine
 
-from api.enrollment import enrollment_router
+# from api.enrollment import enrollment_router
 from api.auth import authRouter
 from api.course import course_router, language_router, level_router
 from api.lesson import (lesson_router, classroom_router, homework_router, homework_submission_router,
@@ -90,7 +90,7 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 app.include_router(shedule_router, prefix='/shedule', tags=['Schedule'])
 app.include_router(authRouter, prefix="/auth", tags=["Auth"])
 app.include_router(attendance_router, prefix="/attendance", tags=["Attendance"])
-app.include_router(enrollment_router, prefix="/enrollment", tags=["Enrollments"])
+# app.include_router(enrollment_router, prefix="/enrollment", tags=["Enrollments"])
 app.include_router(course_router, prefix="/courses", tags=["Courses"])
 app.include_router(language_router, prefix="/languages", tags=["Languages"])
 app.include_router(level_router, prefix="/levels", tags=["Levels"])
@@ -103,7 +103,7 @@ app.include_router(homework_submission_router, prefix='/submissions', tags=['Hom
 app.include_router(homework_review_router, prefix='/homework_review', tags=['Homeworks-review'])
 app.include_router(payment_router, prefix='/payment', tags=['Payments'])
 app.include_router(payment_details, prefix='/payment_details', tags=['Payment-details'])
-app.include_router(subscription_router, prefix='/subscription', tags=['Subscriptions'])
+# app.include_router(subscription_router, prefix='/subscription', tags=['Subscriptions'])
 app.include_router(user_router, prefix='/user', tags=['Users'])
 app.include_router(payment_requisites, prefix='/payment_requisites', tags=['Payment-requisites'])
 app.include_router(payment_checks_router, prefix='/checks', tags=["Payment-checks"])

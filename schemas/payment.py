@@ -4,43 +4,43 @@ import uuid
 from pydantic import BaseModel, ConfigDict
 
 from db.types import Currency, PaymentMethod, PaymentStatus, SubscriptionStatus, PaymentDetailStatus
-from models.payment import Payment, Subscription
+from models.payment import Payment
 from schemas.course import CourseRelationBase
 from schemas.user import UserBase
 from schemas.group import GroupBase
 
 
-class SubscriptionBase(BaseModel):
-    id: uuid.UUID
-    created_at: datetime
-    status: SubscriptionStatus
-    course_id: int
-    owner_id: int
+# class SubscriptionBase(BaseModel):
+#     id: uuid.UUID
+#     created_at: datetime
+#     status: SubscriptionStatus
+#     course_id: int
+#     owner_id: int
 
-    model_config = ConfigDict(from_attributes=True)
+#     model_config = ConfigDict(from_attributes=True)
     
 
-class SubscriptionResponse(SubscriptionBase):
-    # course: CourseBase
-    course: CourseRelationBase
-    owner: UserBase
-    # payments: "PaymentBase"
+# class SubscriptionResponse(SubscriptionBase):
+#     # course: CourseBase
+#     course: CourseRelationBase
+#     owner: UserBase
+#     # payments: "PaymentBase"
 
 
-class SubscriptionCreate(BaseModel):
-    status: SubscriptionStatus = SubscriptionStatus.PENDING
-    course_id: int
-    owner_id: int
+# class SubscriptionCreate(BaseModel):
+#     status: SubscriptionStatus = SubscriptionStatus.PENDING
+#     course_id: int
+#     owner_id: int
 
 
-class SubscriptionUpdate(BaseModel):
-    status: SubscriptionStatus = SubscriptionStatus.ACTIVE
-    course_id: int
+# class SubscriptionUpdate(BaseModel):
+#     status: SubscriptionStatus = SubscriptionStatus.ACTIVE
+#     course_id: int
 
 
-class SubscriptionPartialUpdate(BaseModel):
-    status: Optional[SubscriptionStatus] = None
-    course_id: Optional[int] = None
+# class SubscriptionPartialUpdate(BaseModel):
+#     status: Optional[SubscriptionStatus] = None
+#     course_id: Optional[int] = None
 
 
 class PaymentBase(BaseModel):
@@ -50,7 +50,7 @@ class PaymentBase(BaseModel):
     payment_method: PaymentMethod
     payment_status: PaymentStatus
     currency: Currency
-    subscription: int
+    # subscription: int
     owner: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -71,8 +71,9 @@ class PaymentCreate(BaseModel):
 
     payment_status: PaymentStatus = PaymentStatus.PENDING
     currency: Currency = Currency.KGS
-    subscription_id: uuid.UUID
+    # subscription_id: uuid.UUID
     owner_id: int
+    group_id: int
 
 
 class PaymentUpdate(BaseModel):
@@ -86,7 +87,7 @@ class PaymentPartialUpdate(BaseModel):
     payment_status: Optional[PaymentStatus] = None
 
 
-SubscriptionResponse.model_rebuild()
+# SubscriptionResponse.model_rebuild()
 
 
 class PaymentDetailBase(BaseModel):

@@ -53,12 +53,12 @@ group_students_router = routing.APIRouter()
         response_model=List[GroupStudentDetailListResponse],
         status_code=status.HTTP_200_OK
 )
-async def group_students_detail_full_list(
+async def get_group_students_detail_full_list(
     user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Returns a list of groups with students and their attendance, payment status
+    Returns a list of groups with students and their attendance, payment status\n
 
     ROLES -> teacher, admin
 
@@ -121,13 +121,13 @@ async def group_students_detail_full_list(
         response_model=List[StudentDetailResponse],
         status_code=status.HTTP_200_OK
 )
-async def group_students_detail_full(
+async def get_group_students_detail_full(
     group_id: int,
     user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Returns a list of students by group with student attendance, payment status
+    Returns a list of students by group with student attendance, payment status\n
 
     ROLES -> teacher, admin
 
@@ -189,14 +189,15 @@ async def group_relates(group_data, session):
         response_model=List[GroupStudentResponse],
         status_code=status.HTTP_200_OK,
 )
-async def group_students_list(
+async def get_group_students_list(
     limit: int = 10,
     offset: int = 0,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user)
 ):
     '''
-    Returns a list of group with students
+    Returns a list of group with students\n
+    ROLES -> teacher, admin
     '''
     query = select(Group).offset(offset=offset).limit(limit=limit).options(
         selectinload(Group.students),
@@ -211,13 +212,14 @@ async def group_students_list(
         response_model=GroupStudentResponse,
         status_code=status.HTTP_200_OK
         )
-async def group_students_detail(
+async def get_group_students_detail(
     group_id: int,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user)
 ):
     '''
     Returns detailed group data with students by group id
+    ROLES -> teacher, admin
     '''
     group = await session.get(Group, group_id, options=[
         selectinload(Group.students),
@@ -243,8 +245,9 @@ async def group_students_update(
     user: User = Depends(current_admin_user)
 ):
     '''
-    Updates group by group id from the submitted data with students fields
-    NOTE -> students fields must contains ids
+    Updates group by group id from the submitted data with students fields\n
+    NOTE -> students fields must contains ids\n
+    ROLES -> admin
     '''
     group = await session.get(Group, group_id, options=[
         selectinload(Group.students),
@@ -303,8 +306,9 @@ async def group_students_partial_update(
     user: User = Depends(current_admin_user)
 ):
     '''
-    Partial update group by group id from the submitted data with students fields
-    NOTE -> students fields must contains ids
+    Partial update group by group id from the submitted data with students fields\n
+    NOTE -> students fields must contains ids\n
+    ROLES -> admin
     '''
     result = await session.execute(
         select(Group)
@@ -367,14 +371,14 @@ async def group_students_partial_update(
         response_model=GroupProfileResponse, 
         status_code=status.HTTP_200_OK
 )
-async def group_list_profile(
+async def get_profile_with_group_list(
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=100)] = 20,
     user: User = Depends(current_student_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Returns current teacher user groups
+    Returns current teacher or student groups\n
 
     ROLES -> student, teacher 
     '''
@@ -436,14 +440,15 @@ async def group_list_profile(
     return response
 
 @group_router.get("/", response_model=List[GroupResponse], status_code=status.HTTP_200_OK)
-async def group_list(
+async def get_group_list(
     limit: int = 10,
     offset: int = 0,
-    user: User = Depends(optional_current_user),
+    user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Returns a list of groups
+    Returns a list of groups\n
+    ROLES -> teacher, admin
     '''
     query = select(Group).options(selectinload(Group.teacher)).offset(offset=offset).limit(limit=limit)
     groups = await session.execute(query)
@@ -455,13 +460,14 @@ async def group_list(
         response_model=GroupResponse,
         status_code=status.HTTP_200_OK
         )
-async def group_detail(
+async def get_group_detail(
     group_id: int,
-    user: User = Depends(optional_current_user),
+    user: User = Depends(current_teacher_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Returns detailed group data by group id
+    Returns detailed group data by group id\n
+    ROLES -> teacher, admin
     '''
     # query = select(student_group_association_table).where(
     #     student_group_association_table.c.group_id == group_id
@@ -499,7 +505,8 @@ async def group_create(
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Returns a list of groups
+    Returns a list of groups\n
+    ROLES -> admin
     '''
     relates = {}
 
@@ -524,7 +531,8 @@ async def group_update(
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Updates a group by group id from the submitted data
+    Updates a group by group id from the submitted data\n
+    ROLES -> admin
     '''
     groups = await session.execute(select(Group).where(Group.id == group_id))
     group = groups.scalar_one_or_none()
@@ -552,7 +560,8 @@ async def group_partial_update(
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Partial Updates a group by group id from the submitted data
+    Partial Updates a group by group id from the submitted data\n
+    ROLES -> admin
     '''
     groups = await session.execute(select(Group).where(Group.id == group_id))
     group = groups.scalar_one_or_none()
@@ -578,7 +587,8 @@ async def group_delete(
     session: AsyncSession = Depends(get_async_session)
 ):
     '''
-    Delete group by group id
+    Delete group by group id\n
+    ROLES -> admin
     '''
     group = await session.get(Group, group_id)
     await session.delete(group)

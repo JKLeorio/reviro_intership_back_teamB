@@ -35,7 +35,8 @@ async def is_language_exists(name, db):
 @language_router.get("/", response_model=List[LanguageRead], status_code=status.HTTP_200_OK)
 async def languages_list(db: AsyncSession = Depends(get_async_session)):
     '''
-    Returns a list of languages
+    Returns a list of languages\n
+    ROLES -> all
     '''
     languages = await db.execute(select(Language))
     return languages.scalars().all()
@@ -44,7 +45,8 @@ async def languages_list(db: AsyncSession = Depends(get_async_session)):
 @language_router.get('/{id}', response_model=LanguageRead, status_code=status.HTTP_200_OK)
 async def get_language(id: int, db: AsyncSession = Depends(get_async_session)):
     '''
-    Returns detailed language data by language id
+    Returns detailed language data by language id\n
+    ROLES -> all
     '''
     result = await db.execute(select(Language).where(Language.id == id))
     language = result.scalar_one_or_none()
@@ -59,7 +61,8 @@ async def get_language(id: int, db: AsyncSession = Depends(get_async_session)):
 async def create_language(language_data: LanguageBase, db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_admin_user)):
     '''
-    Creates a language from the submitted data
+    Creates a language from the submitted data\n
+    ROLES -> admin
     '''
     await is_language_exists(name=language_data.name, db=db)
 
@@ -74,7 +77,8 @@ async def create_language(language_data: LanguageBase, db: AsyncSession = Depend
 async def update_language(id: int, language_data: LanguageUpdate, db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_admin_user)):
     '''
-    Updates a language by language id from the submitted data
+    Updates a language by language id from the submitted data\n
+    ROLES -> admin
     '''
     result = await db.execute(select(Language).where(Language.id == id))
     language = result.scalar_one_or_none()
@@ -92,7 +96,8 @@ async def update_language(id: int, language_data: LanguageUpdate, db: AsyncSessi
 async def destroy_language(id: int, db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_admin_user)):
     '''
-    Delete language by language id
+    Delete language by language id\n
+    ROLES -> admin
     '''
     result = await db.execute(select(Language).where(Language.id == id))
     language = result.scalar_one_or_none()
@@ -120,7 +125,8 @@ async def is_level_exists(code, db, exclude_id: int | None = None):
 @level_router.get("/", response_model=List[LevelRead], status_code=status.HTTP_200_OK)
 async def levels_list(db: AsyncSession = Depends(get_async_session)):
     '''
-    Returns a list of levels
+    Returns a list of levels\n
+    ROLES -> all
     '''
     levels = await db.execute(select(Level))
     return levels.scalars().all()
@@ -129,7 +135,7 @@ async def levels_list(db: AsyncSession = Depends(get_async_session)):
 @level_router.get("/{id}", response_model=LevelRead, status_code=status.HTTP_200_OK)
 async def get_level(id: int, db: AsyncSession = Depends(get_async_session)):
     '''
-    Returns detailed level data by level id
+    Returns detailed level data by level id\n
     '''
     result = await db.execute(select(Level).where(Level.id == id))
     level = result.scalar_one_or_none()
@@ -142,7 +148,8 @@ async def get_level(id: int, db: AsyncSession = Depends(get_async_session)):
 async def create_level(level_data: LevelBase, db: AsyncSession = Depends(get_async_session),
                        user: User = Depends(current_admin_user)):
     '''
-    Creates a level from the submitted data
+    Creates a level from the submitted data\n
+    ROLES -> admin
     '''
     if level_data.code is not None:
         level_data.code = level_data.code.upper()
@@ -158,7 +165,8 @@ async def create_level(level_data: LevelBase, db: AsyncSession = Depends(get_asy
 async def update_level(id: int, level_data: LevelUpdate, db: AsyncSession = Depends(get_async_session),
                        user: User = Depends(current_admin_user)):
     '''
-    Updates a level by level id from the submitted data
+    Updates a level by level id from the submitted data\n
+    ROLES -> admin
     '''
     result = await db.execute(select(Level).where(Level.id == id))
     level = result.scalar_one_or_none()
@@ -181,7 +189,8 @@ async def update_level(id: int, level_data: LevelUpdate, db: AsyncSession = Depe
 async def destroy_level(id: int, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_admin_user)):
     '''
-    Delete level by level id
+    Delete level by level id\n
+    ROLES -> admin
     '''
     result = await db.execute(select(Level).where(Level.id == id))
     level = result.scalar_one_or_none()
@@ -195,9 +204,11 @@ async def destroy_level(id: int, db: AsyncSession = Depends(get_async_session),
 @course_router.get("/", response_model=List[CourseRead], status_code=status.HTTP_200_OK)
 async def courses_list(db: AsyncSession = Depends(get_async_session),
                        lang_id: Optional[int] = Query(None),
-                       search: Optional[str] = Query(None)):
+                       search: Optional[str] = Query(None),
+                       user: User = Depends(current_admin_user)):
     '''
-    Returns a list of courses
+    Returns a list of courses\n
+    ROLES -> admin
     '''
     result = (
         select(Course).options(
@@ -214,12 +225,17 @@ async def courses_list(db: AsyncSession = Depends(get_async_session),
 
 
 @course_router.get("/{id}", response_model=CourseRead, status_code=status.HTTP_200_OK)
-async def get_course(id: int, db: AsyncSession = Depends(get_async_session)):
+async def get_course(
+    id: int, 
+    db: AsyncSession = Depends(get_async_session), 
+    user: User = Depends(current_admin_user)
+    ):
     result = await db.execute(select(Course).where(Course.id == id)
                               .options(selectinload(Course.language))
                               .options(selectinload(Course.level)))
     '''
-    Returns detailed course data by course id
+    Returns detailed course data by course id\n
+    ROLES -> admin
     '''
     course = result.scalar_one_or_none()
     if course is None:
@@ -231,7 +247,8 @@ async def get_course(id: int, db: AsyncSession = Depends(get_async_session)):
 async def create_course(course_data: CourseBase, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_admin_user)):
     '''
-    Creates a course from the submitted data
+    Creates a course from the submitted data\n
+    ROLES -> admin
     '''
     language_res = await db.execute(select(Language).where(Language.name == course_data.language_name))
     language_obj = language_res.scalar_one_or_none()
@@ -268,7 +285,8 @@ async def create_course(course_data: CourseBase, db: AsyncSession = Depends(get_
 async def update_course(id: int, course_data: CourseUpdate, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_admin_user)):
     '''
-    Updates a course by course id from the submitted data
+    Updates a course by course id from the submitted data\n
+    ROLES -> admin
     '''
     result = await db.execute(select(Course).where(Course.id == id))
     course = result.scalar_one_or_none()
@@ -303,7 +321,8 @@ async def update_course(id: int, course_data: CourseUpdate, db: AsyncSession = D
 async def destroy_course(id: int, db: AsyncSession = Depends(get_async_session),
                          user: User = Depends(current_admin_user)):
     '''
-    Delete course by course id
+    Delete course by course id\n
+    ROLES -> admin
     '''
     result = await db.execute(select(Course).where(Course.id == id))
     course = result.scalar_one_or_none()

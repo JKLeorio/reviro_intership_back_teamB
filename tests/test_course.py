@@ -187,8 +187,8 @@ async def test_get_courses(client):
 @pytest.mark.role("teacher")
 async def test_get_courses_by_non_admin_user(client):
     response = await client.get("/courses/")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.status_code == 403
+    # assert isinstance(response.json(), list)
 
 
 @pytest.mark.anyio

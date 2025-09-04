@@ -86,7 +86,7 @@ class UserFilter(Filter):
     response_model=TeachersWithCourseAndPagination,
     status_code=status.HTTP_200_OK
 )
-async def teacher_list(
+async def get_teacher_list(
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=100)] = 20,
     course_id: Annotated[int | None, Query()] = None,
@@ -163,7 +163,7 @@ async def teacher_list(
     response_model=StudentWithGroupAndPagination,
     status_code=status.HTTP_200_OK
 )
-async def student_list(
+async def get_student_list(
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=100)] = 20,
     group_id: Annotated[int | None, Query()] = None,
@@ -298,7 +298,7 @@ async def get_student_profile_data(user_id, session: AsyncSession):
         response_model=Union[StudentProfile, TeacherProfile],
         status_code=status.HTTP_200_OK
 )
-async def user_profile(
+async def get_current_user_profile(
     user: User = Depends(current_student_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -320,7 +320,7 @@ async def user_profile(
     response_model=UserResponse,
     status_code=status.HTTP_200_OK
 )
-async def user_data(
+async def get_current_user_data(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
     ):
@@ -334,7 +334,7 @@ async def user_data(
     response_model=List[UserBase],
     status_code=status.HTTP_200_OK
 )
-async def user_list(
+async def get_user_list(
     limit: int = 10,
     offset: int = 0,
     user_filter: UserFilter = FilterDepends(UserFilter),
