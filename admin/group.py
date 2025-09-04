@@ -26,6 +26,7 @@ class GroupAdmin(ModelView, model = Group):
         Group.is_archived,
         Group.course,
         Group.teacher,
+        Group.students
     ]
     column_details_list = [
         Group.id,
@@ -38,6 +39,7 @@ class GroupAdmin(ModelView, model = Group):
         Group.is_archived,
         Group.course,
         Group.teacher,
+        Group.students
     ]
     column_sortable_list = [
         Group.id

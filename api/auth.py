@@ -87,7 +87,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
             await send_email(
             To_email=user.email,
             Subject='Email changed',
-            Content="Hello, your email was changed " \
+            Content="Hello, your email in eureka was changed " \
             f"\nFrom {request['old_email']} into {update_dict['email']}"
         )
 
@@ -173,8 +173,10 @@ async def register_admin(
     super_admin: User = Depends(current_super_user)
 ):
     """
-    Register new admin, only for superadmin
-    NOTE -> The email field when creating a user is used as the username when logging in.
+    Register new admin, only for superadmin\n
+    NOTE -> The email field when creating a user is used as the username when logging in.\n
+    NOTE -> password sends into email\n
+    ROLES -> superadmin
     """
 
     new_user, password = await create_user(
@@ -185,7 +187,7 @@ async def register_admin(
         )
     
     response = UserResponse.model_validate(new_user)
-    response.password = password
+    # response.password = password
     return response
 
 
@@ -199,8 +201,10 @@ async def register_user(
     admin: User = Depends(current_admin_user)
 ):
     """
-    Register new user, only for admin
-    NOTE -> The email field when creating a user is used as the username when logging in.
+    Register new user, only for admin\n
+    NOTE -> The email field when creating a user is used as the username when logging in.\n
+    NOTE -> password sends into email\n
+    ROLES -> admin
     """
 
     new_user, password = await create_user(
@@ -211,7 +215,7 @@ async def register_user(
         )
 
     response = UserResponse.model_validate(new_user)
-    response.password = password
+    # response.password = password
     return response
 
 
@@ -269,6 +273,11 @@ async def register_student_with_group(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Register student with joining to groups\n
+    NOTE -> password sends into email\n
+    ROLES -> admin
+    '''
     from api.payment import create_initial_payment
     group_ids = set(group_id)
     stmt = (
@@ -335,6 +344,11 @@ async def register_teacher_with_group(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
+    '''
+    Register teacher with binding to group\n
+    NOTE -> password sends into email\n
+    ROLES -> admin
+    '''
     group = await session.get(
         Group, 
         group_id, 
@@ -479,6 +493,10 @@ async def send_otp(
     user: User = Depends(current_student_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    '''
+    Generate otp for operations, like profile personal data update\n
+    ROLES -> admin
+    '''
     code = await generate_otp(user, SendOtp.purpose, session)
     await send_email(
         user.email,
@@ -502,6 +520,10 @@ async def profile_update(
     session: AsyncSession = Depends(get_async_session),
     user_manager: UserManager = Depends(get_user_manager)
 ):
+    '''
+    update current user personal data, generate otp for it\n
+    ROLES -> admin
+    '''
     if not (
         await verify_otp(
         session=session,

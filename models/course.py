@@ -59,7 +59,7 @@ class Course(Base):
     level: Mapped["Level"] = relationship(back_populates='courses')
 
     groups: Mapped[List["Group"]] = relationship(back_populates="course", cascade='all, delete-orphan')
-    enrollments: Mapped[List["Enrollment"]] = relationship(back_populates='course', cascade="all, delete-orphan")
+    # enrollments: Mapped[List["Enrollment"]] = relationship(back_populates='course', cascade="all, delete-orphan")
 
     @property
     def language_name(self) -> str | None:
@@ -71,7 +71,7 @@ class Course(Base):
 
 
     #Временно cascade
-    subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="course", cascade="all, delete-orphan")
+    # subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="course", cascade="all, delete-orphan")
 
     def __str__(self):
         return f"({self.id}) {self.name}"

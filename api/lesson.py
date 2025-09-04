@@ -73,7 +73,8 @@ async def is_classroom_exists(name, db):
 @classroom_router.get('/', response_model=List[ClassroomRead], status_code=status.HTTP_200_OK)
 async def get_all_classrooms(db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
     '''
-    Returns a list of classrooms
+    Returns a list of classrooms\n
+    ROLES -> teacher, admin
     '''
     result = await db.execute(select(Classroom))
     return result.scalars().all()
@@ -83,7 +84,8 @@ async def get_all_classrooms(db: AsyncSession = Depends(get_async_session), user
 async def get_classroom(classroom_id: int, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_teacher_user)):
     '''
-    Returns detailed classroom data by classroom id
+    Returns detailed classroom data by classroom id\n
+    ROLES -> teacher, admin
     '''
     classroom = await get_classroom_or_404(classroom_id, db)
     return classroom
@@ -93,7 +95,8 @@ async def get_classroom(classroom_id: int, db: AsyncSession = Depends(get_async_
 async def create_classroom(data: ClassroomCreate, db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_admin_user)):
     '''
-    Creates a classroom from the submitted data
+    Creates a classroom from the submitted data\n
+    ROLES -> admin
     '''
     await is_classroom_exists(name=data.name, db=db)
     data = data.model_dump()
@@ -109,7 +112,8 @@ async def update_classroom(classroom_id: int, data: ClassroomUpdate,
                            db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_admin_user)):
     '''
-    Updates a classroom by classroom id from the submitted data
+    Updates a classroom by classroom id from the submitted data\n
+    ROLES -> admin
     '''
     classroom = await get_classroom_or_404(classroom_id, db)
     data = data.model_dump(exclude_unset=True)
@@ -125,7 +129,8 @@ async def update_classroom(classroom_id: int, data: ClassroomUpdate,
 async def destroy_classroom(classroom_id: int, db: AsyncSession = Depends(get_async_session),
                             user: User = Depends(current_admin_user)):
     '''
-    Delete classroom by classroom id
+    Delete classroom by classroom id\n
+    ROLES -> admin
     '''
     classroom = await get_classroom_or_404(classroom_id, db)
     await db.delete(classroom)
@@ -153,7 +158,8 @@ async def get_lessons_by_groups(group_id: int,
                                 db: AsyncSession = Depends(get_async_session),
                                 user: User = Depends(current_student_user)):
     '''
-    Returns list of lessons by group id
+    Returns list of lessons by group id\n
+    ROLES -> student, teacher, admin
     '''
     group = await get_group_or_404(group_id, db)
     students_ids = [student.id for student in group.students]
@@ -173,7 +179,8 @@ async def get_lesson_by_lesson_id(lesson_id: int, db: AsyncSession = Depends(get
 
                               user: User = Depends(current_student_user)):
     '''
-    Returns detailed classroom data by classroom id
+    Returns detailed lesson data by classroom id\n
+    ROLES -> student, teacher, admin
     '''
     lesson = await db.get(Lesson, lesson_id, options=[selectinload(Lesson.classroom), selectinload(Lesson.group)
                                                       .selectinload(Group.students),
@@ -194,7 +201,8 @@ async def get_lesson_by_lesson_id(lesson_id: int, db: AsyncSession = Depends(get
 async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSession = Depends(get_async_session),
                         user: User = Depends(current_teacher_user)):
     '''
-    Creates a lesson from the submitted data
+    Creates a lesson from the submitted data\n
+    ROLES -> teacher, admin
     '''
     group = await get_group_or_404(group_id, db)
 
@@ -245,7 +253,8 @@ async def create_lesson(lesson_data: LessonCreate, group_id: int, db: AsyncSessi
 async def update_lesson(lesson_data: LessonUpdate, lesson_id: int,
                         db: AsyncSession = Depends(get_async_session), user: User = Depends(current_teacher_user)):
     '''
-    Updates a lesson by lesson id from the submitted data
+    Updates a lesson by lesson id from the submitted data\n
+    ROLES -> teacher, admin
     '''
     lesson = await db.get(Lesson, lesson_id, options=[selectinload(Lesson.classroom)])
     if not lesson:
@@ -281,7 +290,8 @@ async def update_lesson(lesson_data: LessonUpdate, lesson_id: int,
 async def destroy_lesson(lesson_id: int, db: AsyncSession = Depends(get_async_session),
                          user: User = Depends(current_teacher_user)):
     '''
-    Delete lesson by lesson id
+    Delete lesson by lesson id\n
+    ROLES -> teacher, admin
     '''
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
@@ -323,6 +333,10 @@ async def get_homeworks_for_user(user_id, db: AsyncSession):
 @homework_router.get("/{homework_id}", response_model=HomeworkRead, status_code=status.HTTP_200_OK)
 async def get_homework_by_id(homework_id: int, db: AsyncSession = Depends(get_async_session),
                              user: User = Depends(current_teacher_user)):
+    '''
+    get homework by id\n
+    ROLES -> teacher, admin
+    '''
     if user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed')
 
@@ -344,7 +358,8 @@ async def create_homework(lesson_id: int, deadline: datetime = Form(),
                           db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
     '''
-    Creates a homework from the submitted data
+    Creates a homework from the submitted data\n
+    ROLES -> teacher, admin
     '''
     if not file and not description:
         raise HTTPException(status_code=400, detail="Either file or content must be provided")
@@ -382,8 +397,12 @@ async def get_homework_or_none(homework_id, db, user):
 
 
 @homework_router.get("/{homework_id}/download", name="download_homework")
-async def download_submission(homework_id: int, db: AsyncSession = Depends(get_async_session),
+async def download_homework(homework_id: int, db: AsyncSession = Depends(get_async_session),
                               user: User = Depends(current_student_user)):
+    '''
+    Download a homework by homeword id\n
+    ROLES -> teacher, admin
+    '''
     homework = await get_homework_or_none(homework_id, db, user)
     if user.role not in (Role.ADMIN, Role.TEACHER) and user.id not in get_group_students(homework.lesson.group):
         raise HTTPException(status_code=403, detail="You are not allowed")
@@ -409,7 +428,8 @@ async def update_homework(homework_id: int, deadline: datetime = Form(),
                           db: AsyncSession = Depends(get_async_session),
                           user: User = Depends(current_teacher_user)):
     '''
-    Updates a homework by homework id from the submitted data
+    Updates a homework by homework id from the submitted data\n
+    ROLES -> teacher, admin
     '''
     result = await db.execute(select(Homework).where(Homework.id == homework_id)
                               .options(selectinload(Homework.lesson)))
@@ -443,6 +463,10 @@ async def update_homework(homework_id: int, deadline: datetime = Form(),
 @homework_router.patch('/{homework_id}/remove-file', status_code=status.HTTP_200_OK)
 async def remove_file_from_homework(homework_id: int, db: AsyncSession = Depends(get_async_session),
                               user: User = Depends(current_teacher_user)):
+    '''
+    Remove file from homework by homework id\n
+    ROLES -> teacher, admin
+    '''
     result = await db.execute(select(Homework).where(Homework.id == homework_id)
                               .options(selectinload(Homework.lesson)))
     homework = result.scalar_one_or_none()
@@ -466,7 +490,8 @@ async def remove_file_from_homework(homework_id: int, db: AsyncSession = Depends
 async def destroy_homework(homework_id: int, db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_teacher_user)):
     '''
-    Delete homework by homework id
+    Delete homework by homework id\n
+    ROLES -> teacher, admin
     '''
     result = await db.execute(select(Homework).where(Homework.id == homework_id)
                               .options(selectinload(Homework.lesson)))
@@ -491,6 +516,10 @@ async def destroy_homework(homework_id: int, db: AsyncSession = Depends(get_asyn
 async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
                           file: UploadFile | str = File(None),
                           db: AsyncSession = Depends(get_async_session), user: User = Depends(current_student_user)):
+    '''
+    Submit homework submission by student\n
+    ROLES -> student, teacher, admin
+    '''
     homework = await get_homework_or_none(homework_id, db, user)
     if not homework:
         raise HTTPException(status_code=404, detail=f'Homework with id {homework_id} not found')
@@ -539,6 +568,10 @@ async def submit_homework(homework_id: int, content: Optional[str] = Form(None),
                                 status_code=status.HTTP_200_OK)
 async def get_homework_submissions(homework_id: int, db: AsyncSession = Depends(get_async_session),
                            user: User = Depends(current_teacher_user)):
+    '''
+    get homework submissions by homework id\n
+    ROLES -> teacher, admin
+    '''
     result = await db.execute(select(Homework).where(Homework.id == homework_id))
     homework = result.scalar_one_or_none()
     if not homework:
@@ -555,6 +588,10 @@ async def get_homework_submissions(homework_id: int, db: AsyncSession = Depends(
                                 status_code=status.HTTP_200_OK)
 async def get_my_homework_submission(homework_id: int, db: AsyncSession = Depends(get_async_session),
                                      user: User = Depends(current_student_user)):
+    '''
+    Get personal homework submissions\n
+    ROLES -> student, teacher, admin
+    '''
     homework = await get_homework_or_none(homework_id, db, user)
     if not homework:
         raise HTTPException(status_code=404, detail="Submission not found")
@@ -585,6 +622,10 @@ async def get_homework_submission_or_none(submission_id, db):
                                 name="download_submission")
 async def download_submission(submission_id: int, db: AsyncSession = Depends(get_async_session),
                               user: User = Depends(current_student_user)):
+    '''
+    Download homework submission\n
+    ROLES -> student, teacher, admin
+    '''
     submission = await get_homework_submission_or_none(submission_id, db)
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
@@ -610,6 +651,10 @@ async def download_submission(submission_id: int, db: AsyncSession = Depends(get
 async def get_homework_submission(submission_id: int, request: Request,
                                   db: AsyncSession = Depends(get_async_session),
                                   user: User = Depends(current_student_user)):
+    '''
+    Get homework submission by submission id\n
+    ROLES -> student, teacher, admin
+    '''
     submission = await get_homework_submission_or_none(submission_id, db)
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
@@ -626,6 +671,10 @@ async def get_homework_submissions_by_user_id(user_id: int, group_id: Optional[i
                                               size: int = Query(10, ge=1, le=100),
                                               db: AsyncSession = Depends(get_async_session),
                                               curr_user: User = Depends(current_student_user)):
+    '''
+    get user homework submissions\n
+    ROLES -> student, teacher, admin
+    '''
     if curr_user.id != user_id and curr_user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(status_code=403, detail=f"You don't have enough permissions")
     user = await db.get(User, user_id)
@@ -686,6 +735,10 @@ async def update_homework_submission(submission_id: int, content: Optional[str] 
                                      file: UploadFile | str | None = File(None),
                                      db: AsyncSession = Depends(get_async_session),
                                      user: User = Depends(current_student_user)):
+    '''
+    Partial update homework submission\n
+    ROLES -> student, teacher, admin
+    '''
     submission = await get_homework_submission_or_none(submission_id, db)
 
     if not submission:
@@ -715,6 +768,10 @@ async def update_homework_submission(submission_id: int, content: Optional[str] 
 @homework_submission_router.patch('/{submission_id}/remove-file', status_code=status.HTTP_200_OK)
 async def remove_file_from_submission(submission_id: int, db: AsyncSession = Depends(get_async_session),
                                       user: User = Depends(current_student_user)):
+    '''
+    Remove file from homeworksubmission\n
+    ROLES -> student, teacher, admin
+    '''
     result = await db.execute(select(HomeworkSubmission).where(HomeworkSubmission.id == submission_id))
     submission = result.scalar_one_or_none()
     if not submission:
@@ -736,7 +793,10 @@ async def remove_file_from_submission(submission_id: int, db: AsyncSession = Dep
 async def destroy_homework_submission(submission_id: int,
                                       db: AsyncSession = Depends(get_async_session),
                                       user: User = Depends(current_student_user)):
-
+    '''
+    Delete homework submission by submission id\n
+    ROLES -> teacher, admin
+    '''
     submission = await get_homework_submission_or_none(submission_id=submission_id, db=db)
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
@@ -759,6 +819,10 @@ async def destroy_homework_submission(submission_id: int,
 async def create_homework_review(submission_id: int, data: HomeworkReviewCreate,
                                  db: AsyncSession = Depends(get_async_session),
                                  user: User = Depends(current_teacher_user)):
+    '''
+    Creates a homework review from the submitted data\n
+    ROLES -> teacher, admin
+    '''
     result = await db.execute(select(HomeworkSubmission).where(HomeworkSubmission.id == submission_id)
                               .options(selectinload(HomeworkSubmission.homework)
                                        .selectinload(Homework.lesson)))
@@ -787,7 +851,10 @@ async def get_homework_review_by_id(review_id: int, db: AsyncSession = Depends(g
                                     user: User = Depends(current_student_user)):
     result = await db.execute(select(HomeworkReview).where(HomeworkReview.id == review_id).
                               options(selectinload(HomeworkReview.submission)))
-
+    '''
+    Get a homework review by review id\n
+    ROLES -> teacher, admin
+    '''
     review = result.scalar_one_or_none()
     if review is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
@@ -812,6 +879,10 @@ async def get_review_or_none(review_id, db, user):
 async def update_homework_review(review_id: int, data: HomeworkReviewUpdate,
                                  db: AsyncSession = Depends(get_async_session),
                                  user: User = Depends(current_teacher_user)):
+    '''
+    Partial update homework review by review id\n
+    ROLES -> teacher, admin
+    '''
     review = await get_review_or_none(review_id, db, user)
     new_data = data.model_dump(exclude_unset=True)
     for key, value in new_data.items():
@@ -824,6 +895,10 @@ async def update_homework_review(review_id: int, data: HomeworkReviewUpdate,
 @homework_review_router.delete('/{review_id}', status_code=status.HTTP_200_OK)
 async def destroy_homework_review(review_id: int, db: AsyncSession = Depends(get_async_session),
                                   user: User = Depends(current_teacher_user)):
+    '''
+    Delete homework review by review id\n
+    ROLES -> teacher, admin
+    '''
     review = await get_review_or_none(review_id, db, user)
     await db.delete(review)
     await db.commit()

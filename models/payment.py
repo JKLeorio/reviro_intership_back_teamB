@@ -15,20 +15,20 @@ if TYPE_CHECKING:
     from models.course import Course
 
 
-class Subscription(Base):
-    __tablename__ = "subscriptions"
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    # Временно cascade
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
-    status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus, name='subscriptionstatus',
-                                                            create_type=False), default=SubscriptionStatus.PENDING,
-                                                       nullable=False)
-    # Временно cascade
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
+# class Subscription(Base):
+#     __tablename__ = "subscriptions"
+#     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+#     # Временно cascade
+#     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
+#     status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus, name='subscriptionstatus',
+#                                                             create_type=False), default=SubscriptionStatus.PENDING,
+#                                                        nullable=False)
+#     # Временно cascade
+#     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+#     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_current_time)
 
-    course: Mapped["Course"] = relationship(back_populates="subscriptions")
-    owner: Mapped["User"] = relationship(back_populates="subscriptions")
+#     course: Mapped["Course"] = relationship(back_populates="subscriptions")
+#     owner: Mapped["User"] = relationship(back_populates="subscriptions")
 
 
 class Payment(Base):
