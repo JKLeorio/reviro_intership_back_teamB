@@ -221,12 +221,13 @@ async def get_teacher_shedule(teacher_id: int, session: AsyncSession):
     response_model=SheduleResponse,
     status_code=status.HTTP_200_OK
 )
-async def shedule_global(
+async def get_shedule_global(
     session: AsyncSession = Depends(get_async_session),
     user: User|None = Depends(optional_current_user)
 ):
     '''
-    Returns global shedule of all groups for current_week
+    Returns global shedule of all groups for current_week\n
+    ROLES -> non-register and all
     '''
     result = await get_global_shedule(session=session)
     shedule = format_shedule(result)
@@ -238,12 +239,15 @@ async def shedule_global(
     response_model=SheduleResponse,
     status_code=status.HTTP_200_OK
 )
-async def shedule_user(
+async def get_current_user_shedule(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_student_user)
 ):
     '''
-    Returns current user shedule for current week
+    Returns current user shedule for current week\n
+    for student return student shedule\n
+    for teacher return teacher shedule\n
+    ROLES -> student, teacher, admin
     '''
     result=None
     
@@ -263,13 +267,14 @@ async def shedule_user(
         response_model=SheduleResponse,
         status_code=status.HTTP_200_OK
         )
-async def shedule_by_student(
+async def get_shedule_by_student(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user),
 ):
     '''
-    Returns student shedule by user id for current week
+    Returns student shedule by user id for current week\n
+    ROLES -> teacher, admin
     '''
     request_user = await session.get(User, user_id)
     if request_user is None:
@@ -286,13 +291,14 @@ async def shedule_by_student(
         response_model=SheduleResponse,
         status_code=status.HTTP_200_OK
         )
-async def shedule_by_teacher(
+async def get_shedule_by_teacher(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
     '''
-    Returns teacher shedule by user id for current week
+    Returns teacher shedule by user id for current week\n
+    ROLES -> admin
     '''
     request_user = await session.get(User, user_id)
     if request_user is None:
@@ -309,13 +315,14 @@ async def shedule_by_teacher(
     response_model=SheduleResponse,
     status_code=status.HTTP_200_OK
     )
-async def shedule_by_group(
+async def get_shedule_by_group(
     group_id: int,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_teacher_user)
     ):
     '''
-    get group shedule by group id for current week
+    get group shedule by group id for current week\n
+    ROLES -> teacher, admin
     '''
     group = await session.get(Group, group_id)
     if group is None:

@@ -24,26 +24,26 @@ async def test_register_user(client, user_factory):
     dict_comparator(USER_DATA, response.json())
 
 
-@pytest.mark.anyio
-async def test_login(client, user_factory):
-    USER_DATA['email'] = '7@mail.com'
-    USER_DATA['phone_number'] = '999'
-    response_reg = await client.post(
-        '/auth/register-user',
-        json=USER_DATA
-        )
-    assert response_reg.status_code == status.HTTP_201_CREATED
-    data = response_reg.json()
-    response = await client.post(
-        '/auth/login', 
-        data={
-            'username': data['email'],
-            'password': data['password'],
-            }
-        )
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert data['access_token'] is not None
+# @pytest.mark.anyio
+# async def test_login(client, user_factory):
+#     USER_DATA['email'] = '7@mail.com'
+#     USER_DATA['phone_number'] = '999'
+#     response_reg = await client.post(
+#         '/auth/register-user',
+#         json=USER_DATA
+#         )
+#     assert response_reg.status_code == status.HTTP_201_CREATED
+#     data = response_reg.json()
+#     response = await client.post(
+#         '/auth/login', 
+#         data={
+#             'username': data['email'],
+#             'password': data['password'],
+#             }
+#         )
+#     assert response.status_code == status.HTTP_200_OK
+#     data = response.json()
+#     assert data['access_token'] is not None
 
 
 

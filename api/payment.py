@@ -25,13 +25,12 @@ from db.types import (Currency, PaymentDetailStatus, PaymentMethod,
 
 from models.course import Course
 from models.group import Group
-from models.payment import Payment, PaymentDetail, Subscription, PaymentRequisite, PaymentCheck
+from models.payment import Payment, PaymentDetail, PaymentRequisite, PaymentCheck
 from models.user import User
 
 from schemas.payment import (
     PaymentCreate, PaymentDetailBase, PaymentDetailUpdate, PaymentDetailRead, PaymentPartialUpdate,
-    PaymentRequisiteRead, PaymentResponse, PaymentUpdate, PaymentCheckRead, SubscriptionCreate,
-    SubscriptionPartialUpdate, SubscriptionResponse, SubscriptionUpdate, PaymentShort, FinanceRow,
+    PaymentRequisiteRead, PaymentResponse, PaymentUpdate, PaymentCheckRead,PaymentShort, FinanceRow,
     StripeCheckoutRequest, StripeCheckoutResponse, StripePaymentCreate
 )
 from schemas.pagination import PaginatedResponse, Pagination
@@ -54,14 +53,14 @@ payment_requisites = routing.APIRouter()
 payment_checks_router = routing.APIRouter()
 stripe_router = routing.APIRouter()
 
-class SubscriptionFilter(Filter):
-    status__in: Optional[List[SubscriptionStatus]] = None
-    created_at__gte: Optional[datetime] = None
-    created_at__lte: Optional[datetime] = None
-    owner_id: Optional[int] = None
+# class SubscriptionFilter(Filter):
+#     status__in: Optional[List[SubscriptionStatus]] = None
+#     created_at__gte: Optional[datetime] = None
+#     created_at__lte: Optional[datetime] = None
+#     owner_id: Optional[int] = None
 
-    class Constants(Filter.Constants):
-        model = Subscription
+#     class Constants(Filter.Constants):
+#         model = Subscription
 
 class PaymentFilter(Filter):
     payment_method__in: Optional[List[PaymentMethod]] = None
@@ -83,207 +82,207 @@ async def validate_related_fields(models_ids: Dict[Base, int], session: AsyncSes
 
 
 
-@subscription_router.get(
-    "/", status_code=status.HTTP_200_OK, response_model=List[SubscriptionResponse]
-)
-async def subscription_list(
-    limit: int = 10,
-    offset: int = 0,
-    subcription_filter: SubscriptionFilter = FilterDepends(SubscriptionFilter),
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user),
-):
+# @subscription_router.get(
+#     "/", status_code=status.HTTP_200_OK, response_model=List[SubscriptionResponse]
+# )
+# async def subscription_list(
+#     limit: int = 10,
+#     offset: int = 0,
+#     subcription_filter: SubscriptionFilter = FilterDepends(SubscriptionFilter),
+#     session: AsyncSession = Depends(get_async_session),
+#     user: User = Depends(current_admin_user),
+# ):
 
-    """
-    Returns a list of subscriptions
-    you can use filters with query
-    """
+#     """
+#     Returns a list of subscriptions
+#     you can use filters with query
+#     """
 
-    query = (
-        select(Subscription)
-        .offset(offset=offset)
-        .limit(limit=limit)
-        .options(
-            selectinload(Subscription.owner),
-            selectinload(Subscription.course),
-        )
-    )
-    query = subcription_filter.filter(query=query)
-
-
-    subscriptions = await session.execute(query)
+#     query = (
+#         select(Subscription)
+#         .offset(offset=offset)
+#         .limit(limit=limit)
+#         .options(
+#             selectinload(Subscription.owner),
+#             selectinload(Subscription.course),
+#         )
+#     )
+#     query = subcription_filter.filter(query=query)
 
 
-    return subscriptions.scalars().all()
+#     subscriptions = await session.execute(query)
 
-@subscription_router.get(
-    "/{subscription_uuid}",
-    response_model=SubscriptionResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def subscription_detail(
-    subscription_uuid: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user),
-):
 
-    """
-    Returns detailed subscription data by subscription id
-    """
+#     return subscriptions.scalars().all()
 
-    subscription = await session.get(
-        Subscription,
-        subscription_uuid,
-        options=[
-            selectinload(Subscription.owner),
-            selectinload(Subscription.course)
+# @subscription_router.get(
+#     "/{subscription_uuid}",
+#     response_model=SubscriptionResponse,
+#     status_code=status.HTTP_200_OK,
+# )
+# async def subscription_detail(
+#     subscription_uuid: uuid.UUID,
+#     session: AsyncSession = Depends(get_async_session),
+#     user: User = Depends(current_admin_user),
+# ):
 
-            ]
-        )
+#     """
+#     Returns detailed subscription data by subscription id
+#     """
 
-    if subscription is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={'detail': 'Subscription not found'}
+#     subscription = await session.get(
+#         Subscription,
+#         subscription_uuid,
+#         options=[
+#             selectinload(Subscription.owner),
+#             selectinload(Subscription.course)
 
-            )
-    return subscription
+#             ]
+#         )
+
+#     if subscription is None:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail={'detail': 'Subscription not found'}
+
+#             )
+#     return subscription
   
 
-@subscription_router.post(
-    "/", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED
-)
-async def subscription_create(
-    subscription_create: SubscriptionCreate,
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user),
-):
+# @subscription_router.post(
+#     "/", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED
+# )
+# async def subscription_create(
+#     subscription_create: SubscriptionCreate,
+#     session: AsyncSession = Depends(get_async_session),
+#     user: User = Depends(current_admin_user),
+# ):
 
-    """
-    Creates a subscription from the submitted data
-    """
+#     """
+#     Creates a subscription from the submitted data
+#     """
 
-    await validate_related_fields(
-        {
-            Course: subscription_create.course_id,
-            User: subscription_create.owner_id
-        },
-        session=session
-    )
-    subscription = Subscription(**subscription_create.model_dump())
-    session.add(subscription)
-    await session.commit()
-    await session.refresh(
-        subscription,
-        attribute_names=[
-            "course",
-            "owner",
-        ],
-    )
-    return subscription
-
-
-
-@subscription_router.put(
-    "/{subscription_uuid}",
-    response_model=SubscriptionResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def subscription_update(
-    subscription_uuid: uuid.UUID,
-    subscription_update: SubscriptionUpdate,
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user),
-):
-
-    """
-    Updates a subscription by subscription id from the submitted data
-    """
-
-    subscription = await session.get(
-        Subscription,
-        subscription_uuid,
-        options=[selectinload(Subscription.owner), selectinload(Subscription.course)],
-    )
-    if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"detail": "Subscription not found"},
-        )
-
-    await validate_related_fields(
-        {Course: subscription_update.course_id}, session=session
-    )
-    for key, value in subscription_update.model_dump().items():
-        setattr(subscription, key, value)
-    await session.commit()
-    await session.refresh(subscription)
-    return subscription
+#     await validate_related_fields(
+#         {
+#             Course: subscription_create.course_id,
+#             User: subscription_create.owner_id
+#         },
+#         session=session
+#     )
+#     subscription = Subscription(**subscription_create.model_dump())
+#     session.add(subscription)
+#     await session.commit()
+#     await session.refresh(
+#         subscription,
+#         attribute_names=[
+#             "course",
+#             "owner",
+#         ],
+#     )
+#     return subscription
 
 
-@subscription_router.patch(
-    "/{subscription_uuid}",
-    response_model=SubscriptionResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def subscription_partial_update(
-    subscription_uuid: uuid.UUID,
-    subscription_update: SubscriptionPartialUpdate,
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user),
-):
 
-    """
-    Partial updates a subscription by subscription id from the submitted data
-    """
+# @subscription_router.put(
+#     "/{subscription_uuid}",
+#     response_model=SubscriptionResponse,
+#     status_code=status.HTTP_200_OK,
+# )
+# async def subscription_update(
+#     subscription_uuid: uuid.UUID,
+#     subscription_update: SubscriptionUpdate,
+#     session: AsyncSession = Depends(get_async_session),
+#     user: User = Depends(current_admin_user),
+# ):
 
-    subscription = await session.get(
-        Subscription,
-        subscription_uuid,
-        options=[selectinload(Subscription.owner), selectinload(Subscription.course)],
-    )
-    if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"detail": "Subscription not found"},
-        )
+#     """
+#     Updates a subscription by subscription id from the submitted data
+#     """
 
-    await validate_related_fields(
-        {Course: subscription_update.course_id}, session=session
-    )
-    for key, value in subscription_update.model_dump(exclude_unset=True).items():
-        setattr(subscription, key, value)
-    await session.commit()
-    await session.refresh(subscription)
-    return subscription
+#     subscription = await session.get(
+#         Subscription,
+#         subscription_uuid,
+#         options=[selectinload(Subscription.owner), selectinload(Subscription.course)],
+#     )
+#     if not subscription:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail={"detail": "Subscription not found"},
+#         )
+
+#     await validate_related_fields(
+#         {Course: subscription_update.course_id}, session=session
+#     )
+#     for key, value in subscription_update.model_dump().items():
+#         setattr(subscription, key, value)
+#     await session.commit()
+#     await session.refresh(subscription)
+#     return subscription
 
 
-@subscription_router.delete(
-    "/{subscription_uuid}", status_code=status.HTTP_204_NO_CONTENT
-)
-async def subscription_delete(
-    subscription_uuid: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user),
-):
+# @subscription_router.patch(
+#     "/{subscription_uuid}",
+#     response_model=SubscriptionResponse,
+#     status_code=status.HTTP_200_OK,
+# )
+# async def subscription_partial_update(
+#     subscription_uuid: uuid.UUID,
+#     subscription_update: SubscriptionPartialUpdate,
+#     session: AsyncSession = Depends(get_async_session),
+#     user: User = Depends(current_admin_user),
+# ):
 
-    """
-    Delete subscription by subscription id
-    """
+#     """
+#     Partial updates a subscription by subscription id from the submitted data
+#     """
 
-    subscription = await session.get(
-        Subscription,
-        subscription_uuid,
-        options=[selectinload(Subscription.owner), selectinload(Subscription.course)],
-    )
-    if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"detail": "Subscription not found"},
-        )
-    await session.delete(subscription)
-    await session.commit()
-    return
+#     subscription = await session.get(
+#         Subscription,
+#         subscription_uuid,
+#         options=[selectinload(Subscription.owner), selectinload(Subscription.course)],
+#     )
+#     if not subscription:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail={"detail": "Subscription not found"},
+#         )
+
+#     await validate_related_fields(
+#         {Course: subscription_update.course_id}, session=session
+#     )
+#     for key, value in subscription_update.model_dump(exclude_unset=True).items():
+#         setattr(subscription, key, value)
+#     await session.commit()
+#     await session.refresh(subscription)
+#     return subscription
+
+
+# @subscription_router.delete(
+#     "/{subscription_uuid}", status_code=status.HTTP_204_NO_CONTENT
+# )
+# async def subscription_delete(
+#     subscription_uuid: uuid.UUID,
+#     session: AsyncSession = Depends(get_async_session),
+#     user: User = Depends(current_admin_user),
+# ):
+
+#     """
+#     Delete subscription by subscription id
+#     """
+
+#     subscription = await session.get(
+#         Subscription,
+#         subscription_uuid,
+#         options=[selectinload(Subscription.owner), selectinload(Subscription.course)],
+#     )
+#     if not subscription:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail={"detail": "Subscription not found"},
+#         )
+#     await session.delete(subscription)
+#     await session.commit()
+#     return
 
 @payment_router.get(
     '/{payment_id}',
@@ -297,7 +296,8 @@ async def payment_detail(
 ):
 
     '''
-    Returns detailed payment data by payment id
+    Returns detailed payment data by payment id\n
+    ROLES -> admin
     '''
 
     payment = await session.get(
@@ -305,7 +305,8 @@ async def payment_detail(
         payment_id,
         options=[
             selectinload(Payment.owner),
-            selectinload(Payment.subscription)
+            selectinload(Payment.group)
+            # selectinload(Payment.subscription)
 
             ]
         )
@@ -329,13 +330,14 @@ async def payment_create(
 ):
 
     '''
-    Creates a payment from the submitted data
+    Creates a payment from the submitted data\n
+    ROLES -> admin
     '''
 
     await validate_related_fields(
         {
             User: payment_create.owner_id,
-            Subscription: payment_create.subscription_id
+            # Subscription: payment_create.subscription_id
         },
         session=session
     )
@@ -346,7 +348,10 @@ async def payment_create(
     await session.commit()
     await session.refresh(payment, attribute_names=[
         'owner',
-        'subscription'])
+        'group'
+        # 'subscription'
+        ]
+    )
 
 
 
@@ -365,7 +370,8 @@ async def payment_update(
 ):
 
     '''
-    Updates a payment by payment id from the submitted data
+    Updates a payment by payment id from the submitted data\n
+    ROLES -> admin
     '''
 
     payment = await session.get(
@@ -373,8 +379,7 @@ async def payment_update(
         payment_id,
         options=[
             selectinload(Payment.owner),
-            selectinload(Payment.subscription)
-
+            # selectinload(Payment.subscription)
             ]
         )
 
@@ -388,7 +393,10 @@ async def payment_update(
     for key, value in payment_update.model_dump().items():
         setattr(payment, key, value)
     await session.commit()
-    await session.refresh(payment)
+    await session.refresh(payment, attribute_names=[
+        'owner',
+        'group'
+    ])
     return payment
 
 
@@ -405,7 +413,9 @@ async def payment_partial_update(
 ):
 
     '''
-    Partial updates a payment by payment id from the submitted data
+    Partial updates a payment by payment id from the submitted data\n
+
+    ROLES -> admin
     '''
 
     payment = await session.get(
@@ -413,7 +423,7 @@ async def payment_partial_update(
         payment_id,
         options=[
             selectinload(Payment.owner),
-            selectinload(Payment.subscription)
+            # selectinload(Payment.subscription)
             ]
         )
 
@@ -428,7 +438,10 @@ async def payment_partial_update(
 
 
     await session.commit()
-    await session.refresh(payment)
+    await session.refresh(payment, attribute_names=[
+        'owner',
+        'group'
+    ])
     return payment
 
 @payment_router.delete(
@@ -442,7 +455,8 @@ async def payment_delete(
 ):
 
     '''
-    Delete payment by payment id
+    Delete payment by payment id\n
+    ROLES -> admin
     '''
 
     payment = await session.get(
@@ -450,7 +464,7 @@ async def payment_delete(
         payment_id,
         options=[
             selectinload(Payment.owner),
-            selectinload(Payment.subscription)
+            # selectinload(Payment.subscription)
 
             ]
         )

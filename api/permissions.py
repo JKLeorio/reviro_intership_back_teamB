@@ -15,7 +15,7 @@ from functools import reduce
 
 def require_roles(*roles : str):
     """
-    Dependenci for checking user permissions by roles
+    Dependency for checking user permissions by roles
     """
     from .auth import current_user
     
